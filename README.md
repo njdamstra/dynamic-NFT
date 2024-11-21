@@ -40,7 +40,7 @@ Installing additional dependencies as needed:
 
 Upgrading Plugins: npm install --save-dev _PLUGIN_NAME_/hardhat-upgrade (_PLUGIN_NAME_ = @openzeppelin)
 
-
+Created a workflow in workflows/ci.yml using chatGPT which sets up Continuous Integration (CI)
 
 
 
