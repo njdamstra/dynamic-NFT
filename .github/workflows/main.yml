@@ -1,0 +1,50 @@
+name: Continuous Integration
+
+# Triggers the workflow on push or pull request events to the main branch
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Defines the jobs to run
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    # Strategy to test against multiple Node.js versions (optional)
+    strategy:
+      matrix:
+        node-version: [16.x]
+
+    steps:
+      # Checks out the repository under $GITHUB_WORKSPACE
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Sets up Node.js environment
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      # Caches node_modules for faster installs
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      # Installs dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # Compiles the smart contracts
+      - name: Compile contracts
+        run: npx hardhat compile
+
+      # Runs the tests
+      - name: Run tests
+        run: npx hardhat test
