@@ -1,33 +1,23 @@
 const hre = require("hardhat");
 const {ethers} = require("ethers");
-//
-// async function main() {
-//   const NFTLoan = await hre.ethers.getContractFactory("NFTLoan");
-//   const nftLoan = await NFTLoan.deploy();
-//
-//   await nftLoan.deployed();
-//
-//   console.log("NFTLoan deployed to:", nftLoan.address);
-// }
-//
-// main().catch((error) => {
-//   console.error(error);
-//   process.exitCode = 1;
-// });
+
 
 async function main() {
-    // const NFTPricing = await ethers.getContractFactory("NFTPricing");
-    // await hre.run("compile");
 
     // get the contract factory
     const NFTPricing = await hre.ethers.getContractFactory("NFTPricing");
     // deploy the contract
     const contract = await NFTPricing.deploy();
+    // Wait for the transaction to be mined
+    // const deploymentReceipt = await contract.deploymentTransaction().wait();
+    // console.log("Deployment transaction mined:", deploymentReceipt.transactionHash);
 
-    // wait for the deployment contract address
-    // await contract.deployed();
+    // get and log the contract address:
+    const contractAddress = await contract.getAddress();
+    console.log("NFTPricing deployed to:", contractAddress); // Logs the contract address
 
-    console.log("NFTPricing deployed to:", contract.address); // Logs the contract address
+    const deployer = (await hre.ethers.getSigners())[0];
+    console.log("Deployer address:", deployer.address);
 }
 
 main().catch((error) => {

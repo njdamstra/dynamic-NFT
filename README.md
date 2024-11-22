@@ -1,17 +1,13 @@
-# Sample Hardhat Project
+# Important Contents for now:
+* make sure prereqs are installed and you update .env with all the keys
+* I haven't played around much with chainlink aggregator so that could be something looking into
+* I am using Alchemy NFT API for NFT oracle data. see the Alchemy API section and the hardhat local network testing section.
+* if you run into errors with npm install or any of that functions children, I have a guide at the bottom detailing how to deal with it
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a Hardhat Ignition module that deploys that contract.
 
-Try running some of the following tasks:
 
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat ignition deploy ./ignition/modules/Lock.js
-```
 # Getting started:
+
 
 ## Prerequisites:
 1. Node.js and npm [installed](https://nodejs.org/en)
@@ -19,8 +15,10 @@ npx hardhat ignition deploy ./ignition/modules/Lock.js
 3. Sign up with [Infura](https://www.infura.io/) to get your project ID for the Sepolia testnet
 4. Optional: create an [Etherscan](https://docs.etherscan.io) account using these steps and getting an API key for contract verification
 
+
 ## Clone repo and install dependencies and create .env file
 dynamic-NFT repository link: https://github.com/njdamstra/dynamic-NFT.git
+
 ```shell
 git clone https://github.com/njdamstra/dynamic-NFT.git
 cd dynamic-NFT
@@ -33,57 +31,68 @@ touch .env // set up Environment Variables
 INFURA_PROJECT_ID=your_infura_project_id // from your infura account dashboard
 PRIVATE_KEY=your_private_key // Export your wallets's private key from MetaMask dedicated to a testnet wallet
 ETHERSCAN_API_KEY=your_etherscan_api_key // optional, used for contract verification. Obtain this from your Etherscan account
+ALCHEMY_API_KEY=your_alchemy_api_key // use the same one you created for the lab :)
 ```
+
 Make sure .env file is included in .gitignore to keep sensitive data secure
+
+# Testing (IMPORTANT)
+
 ## Compile and Test Smart Contracts
+
 ```shell
 npx hardhat compile // Try to compile the contract. This will generate artifacts in the artifacts/ and cache/ directories.
 npx hardhat test // Tests are located in the test/ directory and are written using Mocha and Chai.
+npx hardhat test test/NFTPricing.test.js // for testing a specific test file
 ```
 
-## Deploy to Sepolia Testnet and Verify Contract on Etherscan:
+## Deploy to Sepolia Testnet and Verify Contract on Etherscan (Ignore this step for now):
+
 ```shell
 npx hardhat run scripts/deploy.js --network sepolia // deployment script. copy the deployed contract address from the terminal output for further use.
 npx hardhat verify --network sepolia DEPLOYED_CONTRACT_ADDRESS // Optional if you added Etherscan APU key to .env. replace address with the address output from the deployment step above.
 ```
 
-# What I've done so far:
-Installed essential Packages:
-1. Hardhat: npm install --save-dev hardhat
-2. Ethers.js (for interacting with Ethereum): npm install --save-dev @nomiclabs/hardhat-ethers ethers
-3. Dotenv (for environment variables): npm install dotenv
+# Hardhat local Network testing (IMPORTANT AND MOST RELEVANT)!!!
 
-Set up Hardhat Project: npx hardhat --> sample JavaScript project
+* some of the steps thus far have prompted you to get keys to deploy to sepolia testnet... its complicated and hard 
+* I'll ask the TA to help use with that but we shouldn't need to deploy to the testnet for a while :)
+* So you may ask... how will we test our contract as if it were on the Ethereum Blockchian???? Muahahahaha
+  * Do I have something to show you
+* Introducing the local hardhat network!!!
+how to use it? here's a step by step guide and some tests you should run as you read this!!!
 
-Set up .env file for Environment Variables
+1. in your terminal start a hardhat node:
 
-Set up Testing: npm install --save-dev mocha chai
-- in each test file, include at the top: const { expect } = require("chai"); 
+```shell
+npx hardhat node
+```
+* there should be a bunch of account addresses and there corresponding private keys
 
-Installing additional dependencies as needed:
-* OpenZeppelin contracts (provides secure smart contract templates): npm install @openzeppelin/contracts 
-* Hardhat Plugins:
-  * Hardhat-gas-report: npm install --save-dev hardhat-gas-reporter
-  * solidity-coverage: npm install --save-dev solidity-coverage
+2. Open a new terminal window (keep the other one open and running npx hardhat node)
 
-Upgrading Plugins: npm install --save-dev _PLUGIN_NAME_/hardhat-upgrade (_PLUGIN_NAME_ = @openzeppelin)
+3. Deploy the deploy.js file to this local network
 
-Created a workflow in workflows/ci.yml using chatGPT which sets up Continuous Integration (CI)
+```shell
+npx hardhat run scripts/deploy.js --network localhost
+```
+* this should return:
+  * NFTPricing deployed to: _____
+  * Deployer address: _____ (most likely 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266)
 
-Chainlink Ethereum Sepolia and added my metamask wallet address:
-* [Chainlink Sepolia Faucet](https://faucets.chain.link/sepolia)
-After obtaining Test ETH:
-* npx hardhat run scripts/deploy.js --network sepolia
-Verify contracts on Etherscan:
-* npx hardhat verify --network sepolia DEPLOYED_CONTRACT_ADDRESS
-Getting etherscan API key:
-* [Etherscan doc](https://docs.etherscan.io)
-  * Create an account, then get your API key
-  * .env --> ETHERSCAN_API_KEY = ___
-* Sepolia-specific API endpoint:
-  * https://api-sepolia.etherscan.io/api
+4. cross reference the deployer address with the account addresses outputted by hardhat node.
+   - Take note of its corresponding private key
 
-contract address:
+5. go to examples/floor_price_local_deploy.js and update const privateKey and const contractAddress with the accounts private key and deployers address respectively
+6. go to contracts/NFTPricing.sol and update hardhatAccount in the constructor with the deployer address
+7. run floor_price_local_deploy.js
+
+```shell
+node floor_price_local_deploy.js
+```
+
+if everything works well, you should see floor price updated successfully!
+* this means that we were able to update are contracts running on-chain with data from off-chain
 
 
 # Oracles
@@ -134,16 +143,18 @@ contract PriceConsumer {
    - Deploy the contract to Sepolia
    - Call getLatestPrice to fetch the ETH/USD price
 
-# Alchemy's API
+# Alchemy's API Oracles
 
 ## How to use Alchemy's API generally:
 
 ### Alchemy SDK
+
 1. Header of a js file
    - the right side of this function can import Network, initializeAlchemy, getNftsForOwner, getNftMetadata, BaseNft, NftTokenType
 ```js
 const { Alchemy, Network } = require("alchemy-sdk");
 ```
+
 2. Configure Alchemy SDK:
 ```js
 const config = {
@@ -151,37 +162,44 @@ const config = {
     network: Network.ETH_MAINNET, // replace with your network?
 };
 ```
+
 3. Create the Alchemy object instance
 ```js
 const alchemy = new Alchemy(config);
 ```
+
 4. Create a function that'll run this code
 ```js
 const ex_func = async () => {
     ...
 }
 ```
+
 5. Define the API's functions arguments in the function
 ```js
     const address = ____;
     const owner = ____;
     ...
 ```
+
 6. Call the API function:
 ```js
     const response = await alchemy._API_LIB_._API_FUNC_(address, owner)
     // example
     const response = await alchemy.nft.getFloorPrice(address)
 ```
+
 7. Log the response:
 ```js
     console.log(response) // logs entire response
     console.log(response.openSea) // logs response of NFT data only from openSea marketplace
 ```
+
 8. Run the function by inluding *ex_func();* at bottom of the file or defines somewhere else:
 ```js
 main();
 ```
+
 9. test it out using node:
 ```
 node file_name.js
@@ -192,24 +210,28 @@ node file_name.js
 ```js
 const axios = require("axios");
 ```
+
 2. Define arguments for the API function along with your Alchemy API key:
 ```js
 const apiKey = "your-api-key-from-alchemy"
 const arg = ____;
 ...
 ```
+
 3. Define base URL with the API library you want
 ```js
 const baseURL = `https://eth-mainnet.g.alchemy.com/_API_LIB_/v2/${apiKey}`;
 // example using nft lib:
 const baseURL = `https://eth-mainnet.g.alchemy.com/nft/v2/${apiKey}`;
 ```
+
 4. Finish the URL with the API function and the API function arguments as queries:
 ```js
 const url = `${baseURL}/_API_FUNC_/?_ARG1_NAME_=${arg1}&_ARG2_NAME_=${arg2}`;
 // example of getNFTSales
 const url = `${baseURL}/getNFTSales/?contractAddress=${address}&tokenId=${tokenId}&marketplace=${marketplace}`;
 ```
+
 5. Configure your input 
 ```js
 const config = {
@@ -217,6 +239,7 @@ const config = {
     url: url,
 };
 ```
+
 6. send the configured request using axios and print the response:
 ```js
 axios(config)
@@ -224,19 +247,25 @@ axios(config)
         console.log(response['data'])
     }).catch(error => console.log('error', error));
 ```
+
 7. test it out using node:
 ```
 node file_name.js
 ```
+
 ## How to use the data from the responses in our smart contracts?
+
 This data comes from off-chain sources and retrieves it through HTTPS requests.
 This is not possible to do in smart contracts since they're on-chain and don't have access to the web
 But there is a way to bridge this data so it can be used in our smart contracts
+
 ### Changing the JS files that retrieve the data so that it sends it to the smart contract
+
 1. Add this additional header to our JS file:
 ```js
 const hre = require('hardhat');
 ```
+
 2. Add details about the smart contract that we are trying to send information to:
 ```js
 const contractAddress = "<Our_Contract_Address>";
@@ -248,13 +277,16 @@ const abi = [
     "function updateFloorPrice(uint256 _floorPrice) external"
 ];
 ```
+
 3. Create an instance of our contract:
 ```js
-const provider = hre.ether.provider;
+const provider = hre.ethers.provider;
 const wallet = new hre.ethers.Wallet(process.env.PRIVATE_KEY, provider);
 const contract = new hre.ethers.Contract(contractAddress, abi, wallet);
 ```
+
 4. Update the contract with our response:
+
 **alchemy-sdk**
 ```js
 // in the ex_func put all current data into a try clause:
@@ -307,6 +339,7 @@ main();
 ```
 
 **axios**
+
 ```js
 axios(config)
     .then(async (response) => {
@@ -337,14 +370,19 @@ axios(config)
     })
     .catch(error => console.error('Error fetching or updating floor price:', error));
 ```
+
+
 ### Implementing smart contracts to retrieve this data:
+
 include in our smart contract a way to update the data.
+
 1. create an event:
 ```solidity
     event ____Updated(_data_type_ newData, uint256 timestamp);
     // example of floor price
     event FloorPriceUpdated(uint256 newPrice, uint256 timestamp);
 ```
+
 2. Create a function that's only callable by the owner (us) of the contract that updates the data thru emitting the Update event:
 ```solidity
     function update____(_data_type_ _newData) external onlyOwner {
@@ -355,7 +393,7 @@ include in our smart contract a way to update the data.
 
 
 
-## All NFT methods:
+## All NFT methods defined in Alchemy:
 [SDK NFT methods](https://docs.alchemy.com/reference/sdk-nft-methods)
 
 ### nft collection floor prices
@@ -421,7 +459,9 @@ Response:
 
 
 # Handling errors with npm installations caused by dependencies:
+
 ## General upstream dependency conflict error message for chai and hardhat-gas-reporter:
+
 ![Screenshot 2024-11-20 at 5.31.18 PM.png](..%2F..%2F..%2F..%2F..%2Fvar%2Ffolders%2Fmz%2F5hpg9g8501s0v7gh8_ns8_f00000gn%2FT%2FTemporaryItems%2FNSIRD_screencaptureui_sCKwIQ%2FScreenshot%202024-11-20%20at%205.31.18%E2%80%AFPM.png)
 ![Screenshot 2024-11-21 at 2.26.49 PM.png](..%2F..%2F..%2F..%2F..%2Fvar%2Ffolders%2Fmz%2F5hpg9g8501s0v7gh8_ns8_f00000gn%2FT%2FTemporaryItems%2FNSIRD_screencaptureui_Wlzmhh%2FScreenshot%202024-11-21%20at%202.26.49%E2%80%AFPM.png)
 ```
@@ -442,12 +482,15 @@ Response:
   * Conflicting peer dependency: hardhat-gas-reporter@1.0.10
 * npm error Fix the upstream dependency conflict
 ```
+
 ### Summary of error:
+
 Chai upstream dependency conflict: @nomicfoundation/hardhat-chai-matchers@2.0.8 requires chai@^4.2.0 who's parent is chai@4.5.0 but found chai@5.1.2
 
 Gas report dependency conflict: @nomicfoundation/hardhat-toolbox@5.0.0 requires hardhat-gas-reporter@^1.0.8 who's parent is @1.0.10 but found: hardhat-gas-reporter@2.2.1
 
 ### Solution:
+
 ```shell
 npm uninstall _DEPENDENCY_ // uninstall current version of the dependency
   * chai
@@ -462,3 +505,44 @@ rm package-lock.json // remove both these folders
 npm install // install those folders again
 // verify installed versions again
 ```
+
+
+
+# What I've done so far:
+Installed essential Packages:
+1. Hardhat: npm install --save-dev hardhat
+2. Ethers.js (for interacting with Ethereum): npm install --save-dev @nomiclabs/hardhat-ethers ethers
+3. Dotenv (for environment variables): npm install dotenv
+
+Set up Hardhat Project: npx hardhat --> sample JavaScript project
+
+Set up .env file for Environment Variables
+
+Set up Testing: npm install --save-dev mocha chai
+- in each test file, include at the top: const { expect } = require("chai"); 
+
+Installing additional dependencies as needed:
+* OpenZeppelin contracts (provides secure smart contract templates): npm install @openzeppelin/contracts 
+* Hardhat Plugins:
+  * Hardhat-gas-report: npm install --save-dev hardhat-gas-reporter
+  * solidity-coverage: npm install --save-dev solidity-coverage
+
+Upgrading Plugins: npm install --save-dev _PLUGIN_NAME_/hardhat-upgrade (_PLUGIN_NAME_ = @openzeppelin)
+
+Created a workflow in workflows/ci.yml using chatGPT which sets up Continuous Integration (CI)
+
+Chainlink Ethereum Sepolia and added my metamask wallet address:
+* [Chainlink Sepolia Faucet](https://faucets.chain.link/sepolia)
+After obtaining Test ETH:
+* npx hardhat run scripts/deploy.js --network sepolia
+Verify contracts on Etherscan:
+* npx hardhat verify --network sepolia DEPLOYED_CONTRACT_ADDRESS
+Getting etherscan API key:
+* [Etherscan doc](https://docs.etherscan.io)
+  * Create an account, then get your API key
+  * .env --> ETHERSCAN_API_KEY = ___
+* Sepolia-specific API endpoint:
+  * https://api-sepolia.etherscan.io/api
+
+contract address:
+

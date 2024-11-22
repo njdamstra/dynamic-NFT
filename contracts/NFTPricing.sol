@@ -5,15 +5,19 @@ pragma solidity ^0.8.18;
 contract NFTPricing {
     address public owner; // Address allowed to update the floor price
     uint256 public floorPrice; // Floor price in wei (e.g., 1 ETH = 1e18)
+    address public hardhatAccount;
 
     event FloorPriceUpdated(uint256 newPrice, uint256 timestamp);
 
     constructor() {
         owner = msg.sender; // Deployer is the owner
+        hardhatAccount = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266; // account 0
     }
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Not authorized");
+        //console.log("owner: ", owner);
+
+        require(msg.sender == owner || msg.sender == hardhatAccount, "Not authorized: ${owner}, ${msg.sender}");
         _;
     }
 
