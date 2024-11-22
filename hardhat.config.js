@@ -7,7 +7,7 @@ module.exports = {
   networks: {
     // test network??
     sepolia: {
-      url: `https://seqolia.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
+      url: `https://sepolia.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
       accounts: [process.env.PRIVATE_KEY]
     }
   },

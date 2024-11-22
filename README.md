@@ -82,7 +82,342 @@ Getting etherscan API key:
   * .env --> ETHERSCAN_API_KEY = ___
 * Sepolia-specific API endpoint:
   * https://api-sepolia.etherscan.io/api
-* 
+
+contract address:
+
+
+# Oracles
+
+## Chainlink
+Use Chainlink price feeds to track the value of reserves
+[Chainlinks Data Feed Doc](https://docs.chain.link/data-feeds)
+1. install Chainlink Contracts
+```angular2html
+npm install @chainlink/contracts
+```
+2. Add the **AggregatorV3Interface** from Chainlink to our Solidity contract
+```
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.18;
+
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+
+contract PriceConsumer {
+    AggregatorV3Interface internal priceFeed;
+
+    // Constructor to set the price feed address
+    constructor(address _priceFeed) {
+        priceFeed = AggregatorV3Interface(_priceFeed);
+    }
+
+    /**
+     * Returns the latest price
+     */
+    function getLatestPrice() public view returns (int) {
+        (
+            uint80 roundID,
+            int price,
+            uint startedAt,
+            uint timeStamp,
+            uint80 answeredInRound
+        ) = priceFeed.latestRoundData();
+        return price;
+    }
+}
+```
+3. Set correct Price Feed Address:
+   - For sepolia testnet use the following Chainlink price feeds:
+     - ETH/USD: 0x694AA1769357215DE4FAC081bf1f309aDC325306
+   - Pass these addresses when deploying the contract
+
+4. Deploy and Test:
+   - Deploy the contract to Sepolia
+   - Call getLatestPrice to fetch the ETH/USD price
+
+# Alchemy's API
+
+## How to use Alchemy's API generally:
+
+### Alchemy SDK
+1. Header of a js file
+   - the right side of this function can import Network, initializeAlchemy, getNftsForOwner, getNftMetadata, BaseNft, NftTokenType
+```js
+const { Alchemy, Network } = require("alchemy-sdk");
+```
+2. Configure Alchemy SDK:
+```js
+const config = {
+    apiKey: "your-api-key-from-alchemy",
+    network: Network.ETH_MAINNET, // replace with your network?
+};
+```
+3. Create the Alchemy object instance
+```js
+const alchemy = new Alchemy(config);
+```
+4. Create a function that'll run this code
+```js
+const ex_func = async () => {
+    ...
+}
+```
+5. Define the API's functions arguments in the function
+```js
+    const address = ____;
+    const owner = ____;
+    ...
+```
+6. Call the API function:
+```js
+    const response = await alchemy._API_LIB_._API_FUNC_(address, owner)
+    // example
+    const response = await alchemy.nft.getFloorPrice(address)
+```
+7. Log the response:
+```js
+    console.log(response) // logs entire response
+    console.log(response.openSea) // logs response of NFT data only from openSea marketplace
+```
+8. Run the function by inluding *ex_func();* at bottom of the file or defines somewhere else:
+```js
+main();
+```
+9. test it out using node:
+```
+node file_name.js
+```
+
+### Axios
+1. Header of a js file
+```js
+const axios = require("axios");
+```
+2. Define arguments for the API function along with your Alchemy API key:
+```js
+const apiKey = "your-api-key-from-alchemy"
+const arg = ____;
+...
+```
+3. Define base URL with the API library you want
+```js
+const baseURL = `https://eth-mainnet.g.alchemy.com/_API_LIB_/v2/${apiKey}`;
+// example using nft lib:
+const baseURL = `https://eth-mainnet.g.alchemy.com/nft/v2/${apiKey}`;
+```
+4. Finish the URL with the API function and the API function arguments as queries:
+```js
+const url = `${baseURL}/_API_FUNC_/?_ARG1_NAME_=${arg1}&_ARG2_NAME_=${arg2}`;
+// example of getNFTSales
+const url = `${baseURL}/getNFTSales/?contractAddress=${address}&tokenId=${tokenId}&marketplace=${marketplace}`;
+```
+5. Configure your input 
+```js
+const config = {
+    method: 'get', // 'get' or 'post'
+    url: url,
+};
+```
+6. send the configured request using axios and print the response:
+```js
+axios(config)
+    .then(response => {
+        console.log(response['data'])
+    }).catch(error => console.log('error', error));
+```
+7. test it out using node:
+```
+node file_name.js
+```
+## How to use the data from the responses in our smart contracts?
+This data comes from off-chain sources and retrieves it through HTTPS requests.
+This is not possible to do in smart contracts since they're on-chain and don't have access to the web
+But there is a way to bridge this data so it can be used in our smart contracts
+### Changing the JS files that retrieve the data so that it sends it to the smart contract
+1. Add this additional header to our JS file:
+```js
+const hre = require('hardhat');
+```
+2. Add details about the smart contract that we are trying to send information to:
+```js
+const contractAddress = "<Our_Contract_Address>";
+const abi = [
+    "function _SMART_CONTRACT_FUNC_(arg_TYPE arg_NAME) _returns_and_other_func_headers"
+];
+// example
+const abi = [
+    "function updateFloorPrice(uint256 _floorPrice) external"
+];
+```
+3. Create an instance of our contract:
+```js
+const provider = hre.ether.provider;
+const wallet = new hre.ethers.Wallet(process.env.PRIVATE_KEY, provider);
+const contract = new hre.ethers.Contract(contractAddress, abi, wallet);
+```
+4. Update the contract with our response:
+**alchemy-sdk**
+```js
+// in the ex_func put all current data into a try clause:
+const ex_func = async () => {
+    try {
+        // retreive data like above ^^^^
+        
+        // get specific data we want to update our contracts with
+        const parse_resp_data = response.____.____...;
+        if (!parse_resp_data) {
+            console.error("No ____ found");
+            return;
+        }
+        // log specific data that's being used to update contract
+        console.log("updating ____ to: ", parsed_resp_data);
+        // call contract function that'll update it's available on-chain data
+        const tx = await contract.update____(parsed_response_data);
+        // log this "transaction" (its not rlly a transaction, just an update)
+        console.log("Transaction hash:", tx.hash);
+        
+        await tx.wait();
+        console.log("____ updated successfully!");
+    }.catch (error) {
+        console.error('Error fetching or updating ___:", error);
+    }
+};
+// example with updating floor price:
+const main = async () => {
+    try {
+        const address = "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D";
+        const response = await alchemy.nft.getFloorPrice(address);
+        console.log("Fetched floor price data:", response);
+        // Extract OpenSea floor price
+        const floorPriceETH = response.openSea.floorPrice;
+        if (!floorPriceETH) {
+            console.error("No floor price found for the collection.");
+            return;
+        }
+        const floorPriceWei = hre.ethers.parseEther(floorPriceETH.toString());
+        console.log(`Updating floor price to: ${floorPriceWei} wei`);
+        const tx = await contract.updateFloorPrice(floorPriceWei);
+        console.log("Transaction hash:", tx.hash);
+        await tx.wait();
+        console.log("Floor price updated successfully!");
+    } catch (error) {
+        console.error("Error fetching or updating floor price:", error);
+    }
+};
+main();
+```
+
+**axios**
+```js
+axios(config)
+    .then(async (response) => {
+        const parsed_response_data = response.data.____.____...;
+        // performing any necessary data type manipulation
+        // log new data
+        console.log("updating ___ to: ", parsed_response_data);
+        // call contract function that'll update it's available on-chain data
+        const tx = await contract.update____(parsed_response_data);
+        // log this "transaction" (its not rlly a transaction, just an update)
+        console.log("Transaction hash:", tx.hash);
+        
+        await tx.wait();
+        console.log("____ updated successfully!");
+    }).catch(error => console.error('Error fetching or updating ____:', error));
+// example with floor price:
+axios(config)
+    .then(async (response) => {
+        const floorPriceETH = response.data.openSea.floorPrice;
+        const floorPriceWei = ethers.utils.parseEther(floorPriceETH.toString());
+        console.log(`Updating floor price to: ${floorPriceWei} wei`);
+
+        const tx = await contract.updateFloorPrice(floorPriceWei);
+        console.log("Transaction hash:", tx.hash);
+
+        await tx.wait();
+        console.log("Floor price updated successfully!");
+    })
+    .catch(error => console.error('Error fetching or updating floor price:', error));
+```
+### Implementing smart contracts to retrieve this data:
+include in our smart contract a way to update the data.
+1. create an event:
+```solidity
+    event ____Updated(_data_type_ newData, uint256 timestamp);
+    // example of floor price
+    event FloorPriceUpdated(uint256 newPrice, uint256 timestamp);
+```
+2. Create a function that's only callable by the owner (us) of the contract that updates the data thru emitting the Update event:
+```solidity
+    function update____(_data_type_ _newData) external onlyOwner {
+        data = _newData; // updates contract local variable 
+        emit FloorPriceUpdated(_newData, block.timestamp);
+    }
+```
+
+
+
+## All NFT methods:
+[SDK NFT methods](https://docs.alchemy.com/reference/sdk-nft-methods)
+
+### nft collection floor prices
+[getFloorPrice](https://docs.alchemy.com/reference/getfloorprice-v3)
+* returns the floor price of the specified NFT collection from **openSea** and **looksRare** marketplaces
+* Example: floor_price_BAYC.js and run command 
+  * https://{network}.g.alchemy.com/nft/v3/{apiKey}/getFloorPrice
+```bash
+node floor_price_BAYC.js
+```
+
+### nft sale history
+[getNFTSales](https://docs.alchemy.com/reference/getnftsales-v3)
+* retrieves NFT sales that have occurred through on-chain marketplaces
+* Example: sales_history_BAYC.js
+  * https://{network}.g.alchemy.com/nft/v3/{apiKey}/getNFTSales
+
+### Information on client and there ownership of assets
+[owner]
+* given an address of a wallet, return metadata about there history and assets 
+* can be useful to see if they own the NFT and how much of it they own and paid for
+* Example: NFT_owner_info.js
+
+## Prices of Currencies
+[Token prices](https://docs.alchemy.com/reference/prices-api-quickstart)
+* get prices of tokens (FT only i think) usually outputted in USD
+* Example: fetch_prices_symbol.js and fetch_prices_address.js
+  * "https://api.g.alchemy.com/prices/v1/{apiKey}/tokens/by-symbol"
+  * "https://api.g.alchemy.com/prices/v1/{apiKey}/tokens/by-address"
+
+
+
+## OpenSea
+OpenSea provides an API for fetching NFT data
+[OpenSea API Documentation](https://docs.opensea.io/reference/api-overview)
+The challenge with OpenSea is that it is centralized and we have to bridge the data from off-chain to on-chain
+
+**Common API Endpoints:**
+* Fetch assets: /assets
+* Fetch collections: /collections
+* Fetch floor prices: /collection/{slug}
+
+### Example API Call and Response:
+API call in terminal:
+```
+curl -X GET "https://api.opensea.io/api/v1/collection/{collection_slug}" -H "Accept: application/json"
+```
+Response:
+```json
+{
+  "collection": {
+    "stats": {
+      "floor_price": 1.2,
+      "total_volume": 1234.56
+    }
+  }
+}
+```
+* floor_price: floor price of the collection in ETH
+* total_volume: Total trading volume for the collection
+
+
 
 
 # Handling errors with npm installations caused by dependencies:
@@ -108,8 +443,9 @@ Getting etherscan API key:
 * npm error Fix the upstream dependency conflict
 ```
 ### Summary of error:
-chai upstream dependency conflict: @nomicfoundation/hardhat-chai-matchers@2.0.8 requires chai@^4.2.0 who's parent is chai@4.5.0 but found chai@5.1.2
-gas report dependency conflict: @nomicfoundation/hardhat-toolbox@5.0.0 requires hardhat-gas-reporter@^1.0.8 who's parent is @1.0.10 but found: hardhat-gas-reporter@2.2.1
+Chai upstream dependency conflict: @nomicfoundation/hardhat-chai-matchers@2.0.8 requires chai@^4.2.0 who's parent is chai@4.5.0 but found chai@5.1.2
+
+Gas report dependency conflict: @nomicfoundation/hardhat-toolbox@5.0.0 requires hardhat-gas-reporter@^1.0.8 who's parent is @1.0.10 but found: hardhat-gas-reporter@2.2.1
 
 ### Solution:
 ```shell
