@@ -33,6 +33,29 @@
 * Liquidation logic for liquidating NFT collateral
 
 
+# Work Split
+
+## Nate
+
+
+
+## Varun
+gear box system bundling together NFTs and different types of collateral
+**Build the collateral bundling system and recollateralization logic**
+
+## Srimanji
+
+
+
+## Felix
+
+
+
+## Jonathan
+
+
+
+
 # Getting started:
 
 
