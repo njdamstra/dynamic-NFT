@@ -10,7 +10,7 @@ const ownerAddr = "0x83205214543759c1Fde7bb0B98cBfC7fCb793294";
 
 // Construct the axios request:
 const config = {
-  method: 'get',
+  method: 'GET',
   url: `${baseURL}?owner=${ownerAddr}`
 };
 

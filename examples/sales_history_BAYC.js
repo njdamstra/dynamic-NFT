@@ -14,7 +14,7 @@ const baseURL = `https://eth-mainnet.g.alchemy.com/nft/v2/${apiKey}`;
 const url = `${baseURL}/getNFTSales/?contractAddress=${address}&tokenId=${tokenId}&marketplace=${marketplace}`;
 
 const config = {
-    method: 'get',
+    method: 'GET',
     url: url,
 };
 

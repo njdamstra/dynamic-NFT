@@ -1,9 +1,36 @@
 # Important Contents for now:
+
 * make sure prereqs are installed and you update .env with all the keys
 * I haven't played around much with chainlink aggregator so that could be something looking into
 * I am using Alchemy NFT API for NFT oracle data. see the Alchemy API section and the hardhat local network testing section.
 * if you run into errors with npm install or any of that functions children, I have a guide at the bottom detailing how to deal with it
 
+# What's done:
+
+* update floor prices
+* fetch floor prices
+* see who owns what nft's
+
+# Todo's still:
+
+* Interface for borrower
+  * what functions can they call?
+  * What do they get and receive?
+  * what do they need to provide / what do we need to know from them?
+* Interface for loaner
+  * What functions can they call?
+  * What do they get and receive?
+  * what do they need to provide / what do we need to know from them?
+* Loan pool logic (only ETH)
+  * loaner --> stake tokens, withdraw, 
+* Collateral bundling logical evolution: (challenge gets progressively harder)
+  * **1 NFT as collateral (Full implementation with just this first)**
+  * provide multiple NFT's from same NFT collection as collateral
+  * provide multiple NFT's from different collections as collateral??
+  * provide multiple NFT's from same NFT collection as collateral, recollateralize debt with an NFT from the same collection
+  * provide multiple NFT's from same NFT collection as collateral, recollateralize debt with an NFT from a different collection
+  * provide multiple NFT's from different collections as collateral, recollateralize debt with an NFT from a different collection
+* Liquidation logic for liquidating NFT collateral
 
 
 # Getting started:
