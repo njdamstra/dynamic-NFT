@@ -3,17 +3,22 @@ pragma solidity 0.8.4;
 // Purpose: ERC20 tokens provided to lenders when depositing into our reserves
 
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import {Errors} from "../libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/helpers/Errors.sol";
 import {IlolToken} from "../interfaces/IlolToken.sol";
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+// {IERC20Upgradeable} from
+// import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import {IIncentivesController} from "../interfaces/IIncentivesController.sol";
-import {ILendPoolAddressesProvider} from "../interfaces/ILendPoolAddressesProvider.sol";
+import {ILendPoolAddressProvider} from "../interfaces/ILendPoolAddressProvider.sol";
 import {ILendPoolConfigurator} from "../interfaces/ILendPoolConfigurator.sol";
 import {ILendPool} from "../interfaces/ILendPool.sol";
 
-// import {IncentivizedERC20} from "./IncentivizedERC20.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import {IncentivizedERC20} from "./IncentivizedERC20.sol";
+
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+// import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {WadRayMath} from "../libraries/math/WadRayMath.sol";
 
 /**
@@ -22,11 +27,11 @@ import {WadRayMath} from "../libraries/math/WadRayMath.sol";
  * @author Bend
  */
 // contract BToken is Initializable, IlolToken, IncentivizedERC20
-contract BToken is Initializable, IlolToken {
+contract lolToken is Initializable, IlolToken, IncentivizedERC20 {
   using WadRayMath for uint256;
-  using SafeERC20Upgradeable for IERC20Upgradeable;
+  using SafeERC20 for IERC20;
 
-  ILendPoolAddressesProvider internal _addressProvider;
+  ILendPoolAddressProvider internal _addressProvider;
   address internal _treasury;
   address internal _underlyingAsset;
 
@@ -47,7 +52,7 @@ contract BToken is Initializable, IlolToken {
    * @param underlyingAsset The address of the underlying asset of this bToken
    */
   function initialize(
-    ILendPoolAddressesProvider addressProvider,
+    ILendPoolAddressProvider addressProvider,
     address treasury,
     address underlyingAsset,
     uint8 bTokenDecimals,
@@ -87,7 +92,7 @@ contract BToken is Initializable, IlolToken {
     require(amountScaled != 0, Errors.CT_INVALID_BURN_AMOUNT);
     _burn(user, amountScaled);
 
-    IERC20Upgradeable(_underlyingAsset).safeTransfer(receiverOfUnderlying, amount);
+    IERC20(_underlyingAsset).safeTransfer(receiverOfUnderlying, amount);
 
     emit Burn(user, receiverOfUnderlying, amount, index);
   }
@@ -243,7 +248,7 @@ contract BToken is Initializable, IlolToken {
    * @return The amount transferred
    **/
   function transferUnderlyingTo(address target, uint256 amount) external override onlyLendPool returns (uint256) {
-    IERC20Upgradeable(_underlyingAsset).safeTransfer(target, amount);
+    IERC20(_underlyingAsset).safeTransfer(target, amount);
     return amount;
   }
 

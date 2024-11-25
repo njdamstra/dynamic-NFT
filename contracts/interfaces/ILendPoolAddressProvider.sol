@@ -8,7 +8,7 @@ pragma solidity 0.8.4;
  * - Owned by the Bend Governance
  * @author Bend
  **/
-interface ILendPoolAddressesProvider {
+interface ILendPoolAddressProvider {
   event MarketIdSet(string newMarketId);
   event LendPoolUpdated(address indexed newAddress, bytes encodedCallData);
   event ConfigurationAdminUpdated(address indexed newAddress);
