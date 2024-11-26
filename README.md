@@ -86,7 +86,9 @@ ALCHEMY_API_KEY=your_alchemy_api_key // use the same one you created for the lab
 
 Make sure .env file is included in .gitignore to keep sensitive data secure
 
-# Testing (IMPORTANT)
+# Tutorials:
+
+# Testing Tutorial (IMPORTANT)
 
 ## Compile and Test Smart Contracts
 
@@ -193,7 +195,7 @@ contract PriceConsumer {
    - Deploy the contract to Sepolia
    - Call getLatestPrice to fetch the ETH/USD price
 
-# Alchemy's API Oracles
+# Alchemy's API Oracles Tutorial
 
 ## How to use Alchemy's API generally:
 
@@ -623,6 +625,61 @@ ERC721 token representing the NFT used given to the borrower.
 ## Others
 
 ### LendPoolAddressProvider
+
+
+# Using BendDAO 
+
+```shell
+npm install @benddao/bend-lending-protocol
+```
+
+
+## HARDHAT
+
+Running 
+```shell
+$ npx hardhat
+Hardhat version 2.9.9
+
+Usage: hardhat [GLOBAL OPTIONS] <TASK> [TASK OPTIONS]
+
+GLOBAL OPTIONS:
+
+  --config              A Hardhat config file.
+  --emoji               Use emoji in messages.
+  --help                Shows this message, or a task's help if its name is provided
+  --max-memory          The maximum amount of memory that Hardhat can use.
+  --network             The network to connect to.
+  --show-stack-traces   Show stack traces.
+  --tsconfig            A TypeScript config file.
+  --verbose             Enables Hardhat verbose logging
+  --version             Shows hardhat's version.
+
+
+AVAILABLE TASKS:
+
+  check                 Check whatever you need
+  clean                 Clears the cache and deletes all artifacts
+  compile               Compiles the entire project, building all artifacts
+  console               Opens a hardhat console
+  coverage              Generates a code coverage report for tests
+  flatten               Flattens and prints contracts and their dependencies
+  help                  Prints this message
+  node                  Starts a JSON-RPC server on top of Hardhat Network
+  run                   Runs a user-defined script after compiling the project
+  test                  Runs mocha tests
+  typechain             Generate Typechain typings for compiled contracts
+  verify                Verifies contract on Etherscan
+
+To get help for a specific task run: npx hardhat help [task]
+```
+
+
+```shell
+npx hardhat node
+npx hardhat run scripts/deploy.js --network localhost
+npx hardhat console --network localhost
+```
 
 
 
