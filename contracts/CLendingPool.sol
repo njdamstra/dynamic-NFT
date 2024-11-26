@@ -1,111 +1,127 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./interfaces/ILendingPool.sol";
+import "./CLPToken.sol";
+import "./CDBToken.sol";
 
-contract LoanPool is ILendingPool {
-    mapping(address => uint256) public balances; // Tracks ETH deposited
-    mapping(address => uint256) public borrowed; // Tracks ETH borrowed
-    uint256 public totalSupply; // Total ETH in the pool
-    uint256 public totalBorrowed; // Total ETH borrowed
+contract LoanPool {
+    mapping(address => uint256) public balances; // Tracks ETH deposited by users
+    mapping(address => uint256) public borrowed; // Tracks ETH borrowed by users
 
-    address public owner; // Contract owner
+    uint256 public totalSupply;       // Total ETH in the pool
+    uint256 public totalBorrowed;    // Total ETH borrowed from the pool
+    uint256 public interestReserve;  // Accumulated interest paid by borrowers
+
+    LPToken public lpToken; // Loan Pool Token
+    DBToken public dbToken; // Debt Token
+
+    address public owner;
 
     constructor() {
         owner = msg.sender;
+        lpToken = new LPToken();
+        dbToken = new DBToken();
     }
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "[*ERROR*] Not contract owner!");
+        require(msg.sender == owner, "[*ERROR*] Not the contract owner!");
         _;
     }
 
-    // Initializes the pool with a provider (placeholder for ETH-only pool)
-    function initialize(address provider) external override {
-        // Initialization logic can be added here if necessary
-    }
-
-    // Supplies ETH to the pool
+    // Allows users to supply ETH to the pool
     function supply(
-        address asset, // Ignored for ETH-only
+        address asset, // Placeholder for ETH-only pool
         uint256 amount,
         address onBehalfOf,
-        uint16 referralCode // Ignored for simplicity
-    ) external payable override {
-        require(msg.value == amount, "[*ERROR*] Mismatch in amount! Could not supply.");
-        require(amount > 0, "[*ERROR*] Must supply ETH! Could not supply.");
+        uint16 referralCode // Ignored
+    ) external payable {
+        require(msg.value == amount, "[*ERROR*] Incorrect amount of ETH supplied!");
+        require(amount > 0, "[*ERROR*] Cannot supply zero ETH!");
+
         balances[onBehalfOf] += amount;
         totalSupply += amount;
+
+        // Mint LP tokens to the supplier
+        lpToken.mint(onBehalfOf, amount);
     }
 
-    // Withdraws ETH from the pool
+    // Allows users to withdraw ETH from the pool
     function withdraw(
-        address asset, // Ignored for ETH-only
+        address asset, // Placeholder for ETH-only pool
         uint256 amount,
         address to
-    ) external override {
-        require(balances[msg.sender] >= amount, "[*ERROR*] Insufficient balance! Could not withdraw.");
+    ) external {
+        require(balances[msg.sender] >= amount, "[*ERROR*] Insufficient balance to withdraw!");
+
+        // Calculate the lender's share of the interest reserve
+        uint256 interestShare = (interestReserve * amount) / totalSupply;
+
+        // Update balances and interest reserve
         balances[msg.sender] -= amount;
         totalSupply -= amount;
+        interestReserve -= interestShare;
 
-        (bool success, ) = to.call{value: amount}("");
-        require(success, "[*ERROR*] Transfer failed! Could not withdraw.");
+        // Burn LP tokens from the withdrawer
+        lpToken.burn(msg.sender, amount);
+
+        // Transfer the principal and the interest share
+        uint256 payout = amount + interestShare;
+        (bool success, ) = to.call{value: payout}("");
+        require(success, "[*ERROR*] Transfer failed!");
     }
 
-    // Borrows ETH from the pool
+    // Allows users to borrow ETH from the pool
     function borrow(
-        address asset, // Ignored for ETH-only
+        address asset, // Placeholder for ETH-only pool
         uint256 amount,
-        uint256 interestRateMode, // Ignored for simplicity
-        uint16 referralCode, // Ignored for simplicity
+        uint256 interestRateMode, // Ignored
+        uint16 referralCode, // Ignored
         address onBehalfOf
-    ) external override {
-        require(balances[onBehalfOf] >= amount, "[*ERROR*] Insufficient collateral! Could not borrow.");
-        require(amount <= totalSupply - totalBorrowed, "[*ERROR*] Insufficient liquidity! Could not borrow.");
+    ) external {
+        require(balances[onBehalfOf] >= amount / 2, "[*ERROR*] Insufficient collateral!"); // 50% LTV
+        require(amount <= totalSupply - totalBorrowed, "[*ERROR*] Insufficient liquidity!");
+
         borrowed[msg.sender] += amount;
         totalBorrowed += amount;
 
+        // Mint DB tokens to the borrower
+        dbToken.mint(msg.sender, amount);
+
         (bool success, ) = msg.sender.call{value: amount}("");
-        require(success, "[*ERROR*] Transfer failed! Could not borrow");
+        require(success, "[*ERROR*] Transfer failed!");
     }
 
-    // Repays borrowed ETH
+    // Allows users to repay borrowed ETH with interest
     function repay(
-        address asset, // Ignored for ETH-only
+        address asset, // Placeholder for ETH-only pool
         uint256 amount,
-        uint256 interestRateMode, // Ignored for simplicity
+        uint256 interestRateMode, // Ignored
         address onBehalfOf
-    ) external payable override {
-        require(msg.value == amount, "[*ERROR*] Mismatch in amount! Could not repay.");
-        require(borrowed[onBehalfOf] >= amount, "[*ERROR*] Over-repayment! Could not repay.");
-        borrowed[onBehalfOf] -= amount;
-        totalBorrowed -= amount;
+    ) external payable {
+        require(amount > 0, "[*ERROR*] Repayment amount must be greater than zero!");
+        uint256 totalDebt = borrowed[onBehalfOf];
+        require(totalDebt > 0, "[*ERROR*] No debt to repay!");
+        require(amount >= totalDebt, "[*ERROR*] Insufficient amount to cover the debt!");
+
+        // Calculate interest (10% of the borrowed amount)
+        uint256 interest = (totalDebt * 10) / 100;
+
+        // Require the borrower to pay principal + interest
+        require(msg.value == totalDebt + interest, "[*ERROR*] Incorrect repayment amount!");
+
+        // Burn DB tokens from the borrower
+        dbToken.burn(onBehalfOf, totalDebt);
+
+        // Update borrowed amount and interest reserve
+        borrowed[onBehalfOf] -= totalDebt;
+        totalBorrowed -= totalDebt;
+        interestReserve += interest;
     }
 
-    // Liquidates unhealthy positions
-    function liquidationCall(
-        address collateralAsset, // Ignored for ETH-only
-        address debtAsset, // Ignored for ETH-only
-        address user,
-        uint256 debtToCover,
-        bool receiveAToken // Ignored for simplicity
-    ) external override onlyOwner {
-        require(borrowed[user] >= debtToCover, "[*ERROR*] No debt to cover! Could not liquidate");
-        borrowed[user] -= debtToCover;
-        totalBorrowed -= debtToCover;
-
-        // Transfer collateral back to the liquidator
-        uint256 collateralToLiquidator = debtToCover; // For simplicity, 1:1 ratio
-        balances[user] -= collateralToLiquidator;
-        (bool success, ) = msg.sender.call{value: collateralToLiquidator}("");
-        require(success, "[*ERROR*] Collateral transfer failed! Could not liquidate.");
-    }
-
-    // Retrieves user account data
+    // Retrieve user account data
     function getUserAccountData(address user)
     external
     view
-    override
     returns (
         uint256 totalCollateralETH,
         uint256 totalDebtETH,
@@ -117,9 +133,9 @@ contract LoanPool is ILendingPool {
     {
         totalCollateralETH = balances[user];
         totalDebtETH = borrowed[user];
-        availableBorrowsETH = balances[user] - borrowed[user];
-        currentLiquidationThreshold = 75; // Placeholder: 75%
-        ltv = 50; // Placeholder: 50% loan-to-value
+        availableBorrowsETH = balances[user] / 2 - borrowed[user]; // 50% LTV
+        currentLiquidationThreshold = 75; // Arbitrary threshold
+        ltv = 50; // 50% LTV
         healthFactor = balances[user] > 0 ? (balances[user] * 100) / borrowed[user] : 0;
     }
 }
