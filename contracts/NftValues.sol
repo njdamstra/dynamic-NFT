@@ -3,8 +3,6 @@ pragma solidity ^0.8.18;
 
 contract NftValues {
     address public owner;
-    // mapping(address => uint256) public collectionFloorPrice; // map nft collection address to its floor price in Eth or WEI
-    // mapping(address => mapping(uint256 => uint256)) public nftValues; // map tokenId to our given value in Eth or WEI
 
     address[] public collectionAddresses; //renamed from collections -F
     uint public collectionsLength;
@@ -19,8 +17,9 @@ contract NftValues {
         mapping(uint256 => uint256) nftPrice;
     }
 
-    event FloorPriceUpdated(address collectionAddress, uint256 newFloorPrice, uint256 timestamp);
-    event NftPriceUpdated(address collectionAddress, uint256 tokenId, uint256 newNftPrice, uint256 timestamp);
+    event FloorPriceUpdated(address indexed collectionAddress, uint256 newFloorPrice, uint256 timestamp);
+    event NftPriceUpdated(address indexed collectionAddress, uint256 indexed tokenId, uint256 newNftPrice, uint256 timestamp);
+    event CollectionAdded(address indexed collectionAddress, string name, uint256 timestamp);
 
     constructor(address _owner) { //How do we get the owner? -F
         owner = _owner;
@@ -37,32 +36,33 @@ contract NftValues {
         owner = newOwner;
     }
 
-    // Function to update the floor price
+    // Update floor price of a collection
     function updateFloorPrice(address collectionAddress, uint256 newFloorPrice) external onlyOwner {
+        require(isCollectionPartOfList(collectionAddress), "[*ERROR*] Collection not found!");
+        require(newFloorPrice > 0, "[*ERROR*] Floor price must be positive!");
+
         nftCollections[collectionAddress].floorPrice = newFloorPrice;
         emit FloorPriceUpdated(collectionAddress, newFloorPrice, block.timestamp);
-        updateNftPrice(collectionAddress);
+
+        updateNftPrices(collectionAddress);
     }
 
-    function updateNftPrice(address collectionAddress) external onlyOwner {
-        NftCollection nftCollection = nftCollections[collectionAddress];
-        uint256 floorPrice = nftCollection.floorPrice;
-        uint256[] nftIds = nftCollection.tokenIds;
-        mapping(uint256 => uint256) nftPrices = nftCollection.nftPrice; //why this mapping? -F
+    // Update all NFT prices in a collection
+    function updateNftPrices(address collectionAddress) public onlyOwner {
+        NftCollection storage collection = nftCollections[collectionAddress];
+        uint256 floorPrice = collection.floorPrice;
 
-        // uint256 currPrice = nftValues[tokenId];
-        uint i;
-        uint256 nftId; // should we not use the nft address as it is unique? -F
-        uint256 oldPrice;
-        for (i = 0; i<nftIds.length; i++) {
-            nftId = nftIds[i];
-            oldPrice = nftPrices[nftId];
-            nftPrices[nftId] = nftPricingScheme(collectionAddress, nftId, oldPrice, floorPrice);
-            emit NftPriceUpdated(collectionAddress, nftId, nftPrices[nftId], block.timestamp);
-        } 
-        nftCollection.nftPrice = nftPrices;
-        nftCollections[collectionAddress] = nftCollection;
+        for (uint256 i = 0; i < collection.tokenIds.length; i++) {
+            uint256 tokenId = collection.tokenIds[i];
+            uint256 oldPrice = collection.nftPrice[tokenId];
+            uint256 newPrice = nftPricingScheme(collectionAddress, tokenId, oldPrice, floorPrice);
+
+            collection.nftPrice[tokenId] = newPrice;
+
+            emit NftPriceUpdated(collectionAddress, tokenId, newPrice, block.timestamp);
+        }
     }
+
 
     // TODO: logic on adjusting the price we evaluate the individual NFT to be if we want to analyse it beyond it's floor price
     function nftPricingScheme(address collectionAddress, uint256 nftId, uint256 oldPrice, uint256 floorPrice) external returns (uint256) { // is nftId = tokenId?
@@ -81,19 +81,25 @@ contract NftValues {
         return collectionAddresses;
     }
 
-    function getNftIds(address collectionAddress) public view returns (uint256[]) {
+    function getTokenIds(address collectionAddress) public view returns (uint256[]) {
         return nftCollections[collectionAddress].tokenIds;
     }
 
-    function addCollection(address collectionAddress) private {
-        uint len = getCollectionListLength();
-        if (isCollectionPartOfList(collectionAddress)) {
-            return;
-        } else if (checkCollection(collectionAddress)) { // what is checkCollection?
-            collectionAddresses[len] = collectionAddress;
-            collectionsLength += 1;
-        }
+    // Function to add a new NFT collection
+    function addCollection(address collectionAddress, string memory name, uint256 initialFloorPrice) external onlyOwner {
+        require(!isCollectionPartOfList(collectionAddress), "[*ERROR*] Collection already added!");
+        require(initialFloorPrice > 0, "[*ERROR*] Floor price must be positive!");
 
+        // Initialize collection data
+        NftCollection storage collection = nftCollections[collectionAddress];
+        collection.contractAddress = collectionAddress;
+        collection.name = name;
+        collection.floorPrice = initialFloorPrice;
+
+        collectionAddresses.push(collectionAddress);
+        collectionsLength += 1;
+
+        emit CollectionAdded(collectionAddress, name, block.timestamp);
     }
 
     function getCollectionListLength() public view returns (uint) {
