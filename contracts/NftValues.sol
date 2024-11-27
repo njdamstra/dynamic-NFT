@@ -3,14 +3,27 @@ pragma solidity ^0.8.18;
 
 contract NftValues {
     address public owner;
-    mapping(uint256 => uint256) public nftFloorPrices; // map tokenId to its floor price in Eth or WEI
-    mapping(uint256 => uint256) public nftValues; // map tokenId to our given value in Eth or WEI
+    // mapping(address => uint256) public collectionFloorPrice; // map nft collection address to its floor price in Eth or WEI
+    // mapping(address => mapping(uint256 => uint256)) public nftValues; // map tokenId to our given value in Eth or WEI
 
-    event FloorPriceUpdated(uint256 tokenId, uint256 newFloorPrice, uint256 timestamp);
-    event NftPriceUpdated(uint256 tokenId, uint256 newNftPrice, uint256 timestamp);
+    address[] public collections;
 
-    constructor(address _owner) {
-        owner = _owner
+    mapping(address => NftCollection) public collectionData;
+
+    struct NftCollection {
+        address contractAddr; // NFT contract address
+        string name;
+        uint256 FloorPrice;
+        uint256[] collectionIds; // list of tokenIds used for this collection
+        mapping(uint256 => uint256) nftPrice;
+    }
+
+
+    event FloorPriceUpdated(address collection, uint256 newFloorPrice, uint256 timestamp);
+    event NftPriceUpdated(address collectionAddr, uint256 tokenId, uint256 newNftPrice, uint256 timestamp);
+
+    constructor(address _owner) {Z
+        owner = _owner;
     }
 
     modifier onlyOwner() {
@@ -23,29 +36,54 @@ contract NftValues {
         owner = newOwner;
     }
 
+
+
     // Function to update the floor price
-    function updateFloorPrice(uint256 tokenId, uint256 newFloorPrice) external onlyOwner {
-        nftFloorPrices[tokenId] = newFloorPrice;
-        emit FloorPriceUpdated(tokenId, newFloorPrice, block.timestamp);
-        updateNftPrice(tokenId);
+    function updateFloorPrice(address collection, uint256 newFloorPrice) external onlyOwner {
+        collectionData[collection].floorPrice = newFloorPrice;
+        emit FloorPriceUpdated(collection, newFloorPrice, block.timestamp);
+        updateNftPrice(collection);
     }
 
-    function updateNftPrice(uint256 tokenId) external onlyOwner {
-        floorPrice = nftFloorPrices[tokenId];
-        currPrice = nftValues[tokenId];
-        // TODO: logic on adjusting the price we evaluate the NFT to be if we want to analyse it beyond it's floor price
+    function updateNftPrice(address collection) external onlyOwner {
+        NftCollection nftCollection = collectionData[collection];
+        uint256 floorPrice = nftCollection.floorPrice;
+        uint256[] nftIds = nftCollection.collectionIds;
+        mapping(uint256 => uint256) nftPrices = nftCollection.nftPrice;
 
-
-        updatedPrice = floorPrice;
-        // END TODO
-        emit NftPriceUpdated(tokenId, updatedPrice, block.timestamp);
+        // uint256 currPrice = nftValues[tokenId];
+        uint i;
+        uint256 nftId;
+        uint256 oldPrice;
+        for (i = 0; i<nftIds.length; i++) {
+            nftId = nftIds[i];
+            oldPrice = nftPrices[nftId]
+            nftPrices[nftId] = nftPricingScheme(collection, nftId, oldPrice, floorPrice);
+            emit NftPriceUpdated(collection, nftId, nftPrices[nftId], block.timestamp);
+        } 
+        nftCollection.nftPrice = nftPrices;
+        collectionData[collection] = nftCollection;
+        
     }
 
-    function getNftIdPrice(uint256 tokenId) public (uint256) {
-        return nftValues(tokenId);
+    // TODO: logic on adjusting the price we evaluate the individual NFT to be if we want to analyse it beyond it's floor price
+    function nftPricingScheme(address collection, uint256 id, uint256 oldPrice, uint256 floorPrice) external returns (uint256) {
+        return floorPrice;
     }
 
-    function getNftIdFloorPrice(uint256 tokenId) public (uint256) {
-        return nftFloorPrices(tokenId);
+    function getNftIdPrice(address collection, uint256 tokenId) public view returns (uint256) {
+        return collectionData[collection].nftPrice[tokenId];
+    }
+
+    function getFloorPrice(address collection) public view returns (uint256) {
+        return collectionData[collection].floorPrice;
+    }
+
+    function getCollectionList() public view returns (address[]) {
+        return collections;
+    }
+
+    function getNftIds(address collection) public view returns (uint256[]) {
+        return collectionData[collection].collectionIds;
     }
 }
