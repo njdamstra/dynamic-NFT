@@ -44,6 +44,16 @@ contract LPToken is ERC20 {
         return holders.length;
     }
 
+    // Get the amount of LP tokens a specific holder has
+    function getAmount(address holder) external view returns (uint256) {
+        return balanceOf(holder);
+    }
+
+    // Get the total active LP tokens in circulation
+    function getActiveTokens() external view returns (uint256) {
+        return totalSupply();
+    }
+
     // Get holder at a specific index
     function holderAt(uint256 index) external view returns (address) {
         require(index < holders.length, "[*ERROR*] Index out of bounds!");

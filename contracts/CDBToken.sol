@@ -22,4 +22,9 @@ contract DBToken is ERC20 {
     function burn(address from, uint256 amount) external onlyPool {
         _burn(from, amount);
     }
+
+    // Get the total active LP tokens in circulation
+    function getActiveTokens() external view returns (uint256) {
+        return totalSupply();
+    }
 }

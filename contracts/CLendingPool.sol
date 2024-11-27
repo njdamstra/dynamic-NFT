@@ -6,12 +6,20 @@ import "./CDBToken.sol";
 import "./CCollateralManager.sol";
 
 contract LendingPool {
-    mapping(address => uint256) public borrowed; // Tracks ETH borrowed by users
-    uint256 public totalBorrowed;    // Total ETH borrowed from the pool
-    uint256 public poolBalance;      // Total ETH in the pool
+    mapping(address => uint256) public netBorrowedUsers; // Tracks ETH (without interest) currently borrowed by users
+    mapping(address => uint256) public netSuppliedUsers; // Tracks ETH (without interest) supplied by users
+    mapping(address => uint256) public totalBorrowedUsers; // Tracks ETH (with interest) currently borrowed by users
+
+    uint256 public netBorrowedPool;    // Tracks ETH (without interest) borrowed from the pool
+    uint256 public totalBorrowedPool;    // Tracks ETH (with interest) borrowed from the pool
+    uint256 public poolBalance;      // Tracks current ETH in the pool
+
+    uint256 public activeLpTokens; // Tracks active LPT
+    uint256 public activeDbToken; // Tracks active DBT
 
     LPToken public lpToken;          // Loan Pool Token
     DBToken public dbToken;          // Debt Token
+
     CollateralManager public collateralManager; // Contract managing NFT collateral
 
     address public owner;
@@ -33,7 +41,9 @@ contract LendingPool {
         require(msg.value == amount, "[*ERROR*] Incorrect amount of ETH supplied!");
         require(amount > 0, "[*ERROR*] Cannot supply zero ETH!");
 
+        // Update the pool balance
         poolBalance += amount;
+        netSuppliedUsers[msg.sender] += amount;
 
         // Mint LP tokens proportional to the supplied amount
         lpToken.mint(msg.sender, amount);
@@ -47,6 +57,7 @@ contract LendingPool {
 
         // Update the pool balance
         poolBalance -= amount;
+        netSuppliedUsers[msg.sender] -= amount;
 
         // Burn the LP tokens
         lpToken.burn(msg.sender, amount);
@@ -58,19 +69,28 @@ contract LendingPool {
 
     // Allows users to borrow ETH from the pool using NFT collateral
     function borrow(uint256 amount, uint256 nftId) external {
+        // calculate interest as 10% of borrowed amount
+        uint256 netLoan = amount;
+        uint256 interest = (amount * 10) / 100; // 10% interest
+        uint256 totalLoan = amount += interest;
+
+        // check if NFT is registered within the pool
         require(
             collateralManager.isCollateralRegistered(msg.sender, nftId),
             "[*ERROR*] NFT collateral not registered!"
         );
 
         uint256 nftValue = collateralManager.getNFTValue(msg.sender, nftId);
-        uint256 hf = (nftValue * 100) / (borrowed[msg.sender] + amount); // Health factor
-        require(hf >= 120, "[*ERROR*] Health factor would fall below 1.2!");
+
+        // check if NFT value is sufficient for healthFactor > 1.2
+        uint256 healthFactor = (nftValue * 100) / (netBorrowedUsers[msg.sender] + totalLoan); // Health factor
+        require(healthFactor >= 120, "[*ERROR*] Health factor would fall below 1.2!");
         require(amount <= poolBalance, "[*ERROR*] Insufficient liquidity!");
 
-        borrowed[msg.sender] += amount;
-        totalBorrowed += amount;
+        netBorrowedUsers[msg.sender] += amount;
+        totalBorrowedPool += amount;
         poolBalance -= amount;
+
 
         dbToken.mint(msg.sender, amount);
 
@@ -80,18 +100,19 @@ contract LendingPool {
 
     // Allows users to repay borrowed ETH with interest
     function repay(uint256 amount) external payable {
-        uint256 totalDebt = borrowed[msg.sender];
-        require(totalDebt > 0, "[*ERROR*] No debt to repay!");
+        uint256 initialDebt = netBorrowedUsers[msg.sender];
+        require(initialDebt > 0, "[*ERROR*] No debt to repay!");
+        uint256 interest = (initialDebt * 10) / 100; // 10% interest
+        uint256 totalDebt = initialDebt += interest;
         require(amount >= totalDebt, "[*ERROR*] Insufficient amount to cover the debt!");
 
-        uint256 interest = (totalDebt * 10) / 100; // 10% interest
-        require(msg.value == totalDebt + interest, "[*ERROR*] Incorrect repayment amount!");
+        require(msg.value == totalDebt, "[*ERROR*] Incorrect repayment amount!");
 
         // Burn DB tokens from the borrower
         dbToken.burn(msg.sender, totalDebt);
 
-        borrowed[msg.sender] -= totalDebt;
-        totalBorrowed -= totalDebt;
+        netBorrowedUsers[msg.sender] -= totalDebt;
+        totalBorrowedPool -= totalDebt;
         poolBalance += totalDebt;
 
         // Distribute interest proportionally as LP tokens or add to pool if no lenders
@@ -115,13 +136,13 @@ contract LendingPool {
         require(hf < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
 
         uint256 nftValue = collateralManager.liquidateNFT(borrower, nftId);
-        uint256 debtToCover = borrowed[borrower];
+        uint256 debtToCover = netBorrowedUsers[borrower];
 
         uint256 profit = nftValue > debtToCover ? nftValue - debtToCover : 0;
         uint256 amountToPool = nftValue - profit;
 
-        borrowed[borrower] -= debtToCover;
-        totalBorrowed -= debtToCover;
+        netBorrowedUsers[borrower] -= debtToCover;
+        totalBorrowedPool -= debtToCover;
         dbToken.burn(borrower, debtToCover);
 
         poolBalance += amountToPool;
@@ -149,7 +170,7 @@ contract LendingPool {
         uint256 dbTokenBalance
     )
     {
-        totalDebtETH = borrowed[user];
+        totalDebtETH = netBorrowedUsers[user];
         lpTokenBalance = lpToken.balanceOf(user);
         dbTokenBalance = dbToken.balanceOf(user);
     }

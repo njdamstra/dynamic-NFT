@@ -36,7 +36,7 @@ contract CollateralManager {
     // Calculates the health factor for a user
     function getHealthFactor(address borrower, uint256 nftId) external view returns (uint256) {
         uint256 nftValue = nftValues[borrower][nftId];
-        uint256 debt = LendingPool(pool).borrowed(borrower);
+        uint256 debt = LendingPool(pool).netBorrowedUsers(borrower);
         if (debt == 0) return type(uint256).max; // No debt means infinite health factor
         return (nftValue * 100) / debt;
     }
