@@ -14,9 +14,6 @@ contract LendingPool {
     uint256 public totalBorrowedPool;    // Tracks ETH (with interest) borrowed from the pool
     uint256 public poolBalance;      // Tracks current ETH in the pool
 
-    uint256 public activeLpTokens; // Tracks active LPT
-    uint256 public activeDbToken; // Tracks active DBT
-
     LPToken public lpToken;          // Loan Pool Token
     DBToken public dbToken;          // Debt Token
 
@@ -34,6 +31,15 @@ contract LendingPool {
     modifier onlyOwner() {
         require(msg.sender == owner, "[*ERROR*] Not the contract owner!");
         _;
+    }
+
+    // Transfers ETH into the pool without return tokens
+    function transfer(uint256 amount) external payable {
+        require(msg.value == amount, "[*ERROR*] Incorrect ETH amount sent!");
+        require(amount > 0, "[*ERROR*] Cannot transfer zero ETH!");
+
+        // Update the pool balance
+        poolBalance += amount;
     }
 
     // Allows users to supply ETH to the pool
@@ -69,6 +75,7 @@ contract LendingPool {
 
     // Allows users to borrow ETH from the pool using NFT collateral
     function borrow(uint256 amount, uint256 nftId) external {
+        require(netLoan <= poolBalance, "[*ERROR*] Insufficient pool liquidity!");
         // calculate interest as 10% of borrowed amount
         uint256 netLoan = amount;
         uint256 interest = (amount * 10) / 100; // 10% interest
@@ -80,48 +87,51 @@ contract LendingPool {
             "[*ERROR*] NFT collateral not registered!"
         );
 
-        uint256 nftValue = collateralManager.getNFTValue(msg.sender, nftId);
-
         // check if NFT value is sufficient for healthFactor > 1.2
+        uint256 nftValue = collateralManager.getNFTValue(msg.sender, nftId);
         uint256 healthFactor = (nftValue * 100) / (netBorrowedUsers[msg.sender] + totalLoan); // Health factor
         require(healthFactor >= 120, "[*ERROR*] Health factor would fall below 1.2!");
-        require(amount <= poolBalance, "[*ERROR*] Insufficient liquidity!");
 
-        netBorrowedUsers[msg.sender] += amount;
-        totalBorrowedPool += amount;
-        poolBalance -= amount;
-
-
-        dbToken.mint(msg.sender, amount);
-
-        (bool success, ) = msg.sender.call{value: amount}("");
+        dbToken.mint(msg.sender, totalLoan);
+        (bool success, ) = msg.sender.call{value: totalLoan}("");
         require(success, "[*ERROR*] Transfer failed!");
+
+        poolBalance -= netLoan;
+        netBorrowedPool += netLoan;
+        totalBorrowedPool += totalLoan;
+
+        netBorrowedUsers[msg.sender] += netLoan;
+        totalBorrowedUsers[msg.sender] += totalLoan;
+
     }
 
     // Allows users to repay borrowed ETH with interest
     function repay(uint256 amount) external payable {
-        uint256 initialDebt = netBorrowedUsers[msg.sender];
-        require(initialDebt > 0, "[*ERROR*] No debt to repay!");
-        uint256 interest = (initialDebt * 10) / 100; // 10% interest
-        uint256 totalDebt = initialDebt += interest;
+        uint256 netDebt = netBorrowedUsers[msg.sender];
+        require(netDebt > 0, "[*ERROR*] No debt to repay!");
+        require(totalDebt > 0, "[*ERROR*] No debt to repay!");
+        uint256 interest = (netDebt * 10) / 100; // 10% interest
+        uint256 totalDebt = netDebt += interest;
         require(amount >= totalDebt, "[*ERROR*] Insufficient amount to cover the debt!");
-
         require(msg.value == totalDebt, "[*ERROR*] Incorrect repayment amount!");
 
         // Burn DB tokens from the borrower
         dbToken.burn(msg.sender, totalDebt);
 
-        netBorrowedUsers[msg.sender] -= totalDebt;
-        totalBorrowedPool -= totalDebt;
         poolBalance += totalDebt;
+        netBorrowedPool -= netDebt;
+        totalBorrowedPool -= totalDebt;
+
+        netBorrowedUsers[msg.sender] -= netDebt;
+        totalBorrowedUsers[msg.sender] -= totalDebt;
 
         // Distribute interest proportionally as LP tokens or add to pool if no lenders
-        uint256 totalSupply = lpToken.totalSupply();
-        if (totalSupply > 0) {
+        uint256 activeTokens = lpToken.getActiveTokens();
+        if (activeTokens > 0) {
             // Distribute interest proportionally among lenders
-            for (uint256 i = 0; i < totalSupply; i++) {
+            for (uint256 i = 0; i < activeTokens; i++) {
                 address lender = lpToken.holderAt(i); // Assumes LPToken has a holder-tracking feature
-                uint256 lenderShare = (lpToken.balanceOf(lender) * interest) / totalSupply;
+                uint256 lenderShare = (lpToken.balanceOf(lender) * interest) / activeTokens;
                 lpToken.mint(lender, lenderShare);
             }
         } else {
@@ -132,27 +142,30 @@ contract LendingPool {
 
     // Liquidates an NFT if the health factor drops below 1.2
     function liquidate(address borrower, uint256 nftId) external onlyOwner {
-        uint256 hf = collateralManager.getHealthFactor(borrower, nftId);
-        require(hf < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
+        uint256 healthFactor = collateralManager.getHealthFactor(borrower, nftId);
+        require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
 
         uint256 nftValue = collateralManager.liquidateNFT(borrower, nftId);
-        uint256 debtToCover = netBorrowedUsers[borrower];
+        uint256 debtToCover = totalBorrowedUsers[borrower];
 
         uint256 profit = nftValue > debtToCover ? nftValue - debtToCover : 0;
         uint256 amountToPool = nftValue - profit;
 
-        netBorrowedUsers[borrower] -= debtToCover;
-        totalBorrowedPool -= debtToCover;
         dbToken.burn(borrower, debtToCover);
 
         poolBalance += amountToPool;
+        netBorrowedPool -= nftValue;
+        totalBorrowedPool -= debtToCover;
+
+        netBorrowedUsers[borrower] -= nftValue;
+        totalBorrowedUsers[borrower] -= debtToCover;
 
         // Distribute profit as interest
-        uint256 totalSupply = lpToken.totalSupply();
-        if (totalSupply > 0) {
-            for (uint256 i = 0; i < totalSupply; i++) {
+        uint256 activeTokens = lpToken.getActiveTokens()();
+        if (activeTokens > 0 && profit > 0) {
+            for (uint256 i = 0; i < activeTokens; i++) {
                 address lender = lpToken.holderAt(i); // Assumes LPToken has a holder-tracking feature
-                uint256 lenderShare = (lpToken.balanceOf(lender) * profit) / totalSupply;
+                uint256 lenderShare = (lpToken.balanceOf(lender) * profit) / activeTokens;
                 lpToken.mint(lender, lenderShare);
             }
         } else {
@@ -174,4 +187,5 @@ contract LendingPool {
         lpTokenBalance = lpToken.balanceOf(user);
         dbTokenBalance = dbToken.balanceOf(user);
     }
+
 }
