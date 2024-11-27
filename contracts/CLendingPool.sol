@@ -136,6 +136,8 @@ contract LendingPool is ReentrancyGuard {
         uint256 netDebt = netBorrowedUsers[msg.sender];
         require(netDebt > 0, "[*ERROR*] No debt to repay!");
         require(totalDebt > 0, "[*ERROR*] No debt to repay!");
+        uint256 userBalance = dbToken.balanceOf(msg.sender);
+        require(userBalance >= amount, "[*ERROR*] Insufficient DB tokens!");
         uint256 interest = (netDebt * 10) / 100; // 10% interest
         uint256 totalDebt = netDebt + interest;
         require(amount >= totalDebt, "[*ERROR*] Insufficient amount to cover the debt!");
