@@ -109,7 +109,6 @@ contract LendingPool is ReentrancyGuard {
         require(
             collateralManager.isCollateralRegistered(msg.sender, nftId),
             "[*ERROR*] NFT collateral not registered!"
-
         );
 
         // check if NFT value is sufficient for healthFactor > 1.2
