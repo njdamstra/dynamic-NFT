@@ -5,12 +5,12 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 contract NftTrader {
     // map original nft contract address to mapping of nftid to Listing struct.
-    mapping(address => mapping(uint256 => Listing)) public listings;
+    mapping(address => mapping(uint256 => Listing)) public listings; // should we not use tokenId instead of nttId as uint256? -F
     mapping(address => uint256) public balances;
     // Listing struct has the price and seller (collateralManager contract) of the nft to be liquidated
     struct Listing {
-        uint256 price;
         address seller;
+        uint256 price;
     }
 
     address public collateralManager;
@@ -19,16 +19,16 @@ contract NftTrader {
         // must make this the address of the collateralManager
     }
 
-    modifier onlycollateralManager() {
+    modifier onlyCollateralManager() {
         require(msg.sender == collateralManager, "[*ERROR*] Only the collateralManager can call this function!");
         _;
     }
 
 
-    function addListing(uint256 price, address contractAddr, uint256 tokenId) public onlycollateralManager {
+    function addListing(uint256 price, address contractAddr, uint256 tokenId) public onlyCollateralManager {
         ERC721 token = ERC721(contractAddr);
-        require(token.ownerOf(tokenId) == collateralManager, "Caller must own given token");
-        require(token.isApprovedForAll(collateralManager, address(this)), "contract must be approved");
+        require(token.ownerOf(tokenId) == collateralManager, "[*ERROR*] Caller must own given token!");
+        require(token.isApprovedForAll(collateralManager, address(this)), "[*ERROR*] Contract is not approved!");
 
         listings[contractAddr][tokenId] = Listing(price, collateralManager); // collateralManager is always the Listing.seller
     }
@@ -36,9 +36,9 @@ contract NftTrader {
     function purchase(address contractAddr, uint256 tokenId) public payable {
         Listing memory item = listings[contractAddr][tokenId];
 
-        require(item.price > 0, "NFT not listed for sale");
+        require(item.price > 0, "[*ERROR*] NFT not listed for sale!");
         uint256 amount = msg.value;
-        require(msg.value >= item.price, "Insufficient funds sent"); // msg.value is the amount the purchaser is trying to buy the NFT with
+        require(msg.value >= item.price, "[*ERROR*] Insufficient funds sent!"); // msg.value is the amount the purchaser is trying to buy the NFT with
         balances[item.seller] += msg.value; // update collateralManagers value with the price of the NFT being sold!
 
         ERC721 token = ERC721(contractAddr);
@@ -57,7 +57,7 @@ contract NftTrader {
         balances[collateralManager] -= amount;
 
         (bool success, ) = destAddr.call{value: amount}("");
-        require(success, "Transfer to collateralManager failed");
+        require(success, "[*ERROR*] Transfer to collateralManager failed");
    }
 
    receive() external payable {}

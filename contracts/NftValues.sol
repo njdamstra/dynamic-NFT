@@ -6,10 +6,10 @@ contract NftValues {
     // mapping(address => uint256) public collectionFloorPrice; // map nft collection address to its floor price in Eth or WEI
     // mapping(address => mapping(uint256 => uint256)) public nftValues; // map tokenId to our given value in Eth or WEI
 
-    address[] public collectionAddresses; //renamed from collections
+    address[] public collectionAddresses; //renamed from collections -F
     uint public collectionsLength;
 
-    mapping(address => NftCollection) public nftCollections; //renamed from collectionData
+    mapping(address => NftCollection) public nftCollections; //renamed from collectionData -F
 
     struct NftCollection {
         address contractAddress; // NFT contract address
@@ -48,11 +48,11 @@ contract NftValues {
         NftCollection nftCollection = nftCollections[collectionAddress];
         uint256 floorPrice = nftCollection.floorPrice;
         uint256[] nftIds = nftCollection.collectionIds;
-        mapping(uint256 => uint256) nftPrices = nftCollection.nftPrice; //why this mapping?
+        mapping(uint256 => uint256) nftPrices = nftCollection.nftPrice; //why this mapping? -F
 
         // uint256 currPrice = nftValues[tokenId];
         uint i;
-        uint256 nftId;
+        uint256 nftId; // should we not use the nft address as it is unique? -F
         uint256 oldPrice;
         for (i = 0; i<nftIds.length; i++) {
             nftId = nftIds[i];
@@ -89,7 +89,7 @@ contract NftValues {
         uint len = getCollectionListLength();
         if (isCollectionPartOfList(collectionAddress)) {
             return;
-        } else if (checkCollection(collectionAddress)) {
+        } else if (checkCollection(collectionAddress)) { // what is checkCollection?
             collectionAddresses[len] = collectionAddress;
             collectionsLength += 1;
         }
