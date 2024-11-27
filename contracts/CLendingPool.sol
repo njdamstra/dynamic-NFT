@@ -22,9 +22,12 @@ contract LendingPool is ReentrancyGuard {
 
     CollateralManager public collateralManager; // Contract managing NFT collateral
 
+    bool public paused = false; // pause contract
+
     address public owner;
 
     constructor(address _collateralManager) {
+        paused = false;
         owner = msg.sender;
         lpToken = new LPToken();
         dbToken = new DBToken();
@@ -36,6 +39,17 @@ contract LendingPool is ReentrancyGuard {
         _;
     }
 
+    modifier whenNotPaused() {
+        require(!paused, "[*ERROR*] Contract is paused!");
+        _;
+    }
+    // events for transparency
+    event Supplied(address indexed user, uint256 amount);
+    event Withdrawn(address indexed user, uint256 amount);
+    event Borrowed(address indexed user, uint256 amount, uint256 nftId);
+    event Repaid(address indexed user, uint256 amount);
+    event Liquidated(address indexed borrower, uint256 nftId, uint256 amountRecovered);
+
     // Transfers ETH into the pool without return tokens
     function transfer(uint256 amount) external payable {
         require(msg.value == amount, "[*ERROR*] Incorrect ETH amount sent!");
@@ -43,6 +57,11 @@ contract LendingPool is ReentrancyGuard {
 
         // Update the pool balance
         poolBalance += amount;
+    }
+
+    fallback() external payable {
+        require(msg.value > 0, "[*ERROR*] Cannot send zero ETH!");
+        poolBalance += msg.value;
     }
 
     // Allows users to supply ETH to the pool
@@ -56,10 +75,11 @@ contract LendingPool is ReentrancyGuard {
 
         // Mint LP tokens proportional to the supplied amount
         lpToken.mint(msg.sender, amount);
+        emit Supplied(msg.sender, amount);
     }
 
     // Allows users to withdraw ETH from the pool
-    function withdraw(uint256 amount) external nonReentrant {
+    function withdraw(uint256 amount) external nonReentrant whenNotPaused {
         require(amount > 0, "[*ERROR*] Cannot withdraw zero ETH!");
         uint256 userBalance = lpToken.balanceOf(msg.sender);
         require(userBalance >= amount, "[*ERROR*] Insufficient LP tokens!");
@@ -74,20 +94,22 @@ contract LendingPool is ReentrancyGuard {
         // Transfer the ETH to the user
         (bool success, ) = msg.sender.call{value: amount}("");
         require(success, "[*ERROR*] Transfer failed!");
+        emit Withdrawn(msg.sender, amount);
     }
 
     // Allows users to borrow ETH from the pool using NFT collateral
-    function borrow(uint256 amount, uint256 nftId) external nonReentrant {
+    function borrow(uint256 amount, uint256 nftId) external nonReentrant whenNotPaused {
         require(netLoan <= poolBalance, "[*ERROR*] Insufficient pool liquidity!");
         // calculate interest as 10% of borrowed amount
         uint256 netLoan = amount;
         uint256 interest = (amount * 10) / 100; // 10% interest
-        uint256 totalLoan = amount += interest;
+        uint256 totalLoan = amount + interest;
 
         // check if NFT is registered within the pool
         require(
             collateralManager.isCollateralRegistered(msg.sender, nftId),
             "[*ERROR*] NFT collateral not registered!"
+
         );
 
         // check if NFT value is sufficient for healthFactor > 1.2
@@ -106,6 +128,8 @@ contract LendingPool is ReentrancyGuard {
         netBorrowedUsers[msg.sender] += netLoan;
         totalBorrowedUsers[msg.sender] += totalLoan;
 
+        emit Borrowed(msg.sender, amount, nftId);
+
     }
 
     // Allows users to repay borrowed ETH with interest
@@ -114,7 +138,7 @@ contract LendingPool is ReentrancyGuard {
         require(netDebt > 0, "[*ERROR*] No debt to repay!");
         require(totalDebt > 0, "[*ERROR*] No debt to repay!");
         uint256 interest = (netDebt * 10) / 100; // 10% interest
-        uint256 totalDebt = netDebt += interest;
+        uint256 totalDebt = netDebt + interest;
         require(amount >= totalDebt, "[*ERROR*] Insufficient amount to cover the debt!");
         require(msg.value == totalDebt, "[*ERROR*] Incorrect repayment amount!");
 
@@ -141,6 +165,7 @@ contract LendingPool is ReentrancyGuard {
             // If no lenders, add interest to the pool balance
             poolBalance += interest;
         }
+        emit Repaid(msg.sender, amount);
     }
 
     // Liquidates an NFT if the health factor drops below 1.2
@@ -149,19 +174,19 @@ contract LendingPool is ReentrancyGuard {
         require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
 
         uint256 nftValue = collateralManager.liquidateNFT(borrower, nftId);
-        uint256 debtToCover = totalBorrowedUsers[borrower];
+        uint256 totalDebt = totalBorrowedUsers[borrower];
 
-        uint256 profit = nftValue > debtToCover ? nftValue - debtToCover : 0;
+        uint256 profit = nftValue > totalDebt ? nftValue - totalDebt : 0;
         uint256 amountToPool = nftValue - profit;
 
-        dbToken.burn(borrower, debtToCover);
+        dbToken.burn(borrower, totalDebt);
 
         poolBalance += amountToPool;
-        netBorrowedPool -= nftValue;
-        totalBorrowedPool -= debtToCover;
+        netBorrowedPool -= totalDebt;
+        totalBorrowedPool -= totalDebt;
 
-        netBorrowedUsers[borrower] -= nftValue;
-        totalBorrowedUsers[borrower] -= debtToCover;
+        netBorrowedUsers[borrower] -= totalDebt;
+        totalBorrowedUsers[borrower] -= totalDebt;
 
         // Distribute profit as interest
         uint256 activeTokens = lpToken.getActiveTokens()();
@@ -174,19 +199,18 @@ contract LendingPool is ReentrancyGuard {
         } else {
             poolBalance += profit; // If no lenders, add profit to pool balance
         }
+        emit Liquidated(borrower, nftId, amountToPool);
     }
 
     // Retrieve user account data including LP and DB tokens
-    function getUserAccountData(address user)
-    external
-    view
+    function getUserAccountData(address user) external view
     returns (
         uint256 totalDebtETH,
         uint256 lpTokenBalance,
         uint256 dbTokenBalance
     )
     {
-        totalDebtETH = netBorrowedUsers[user];
+        totalDebtETH = totalBorrowedUsers[user];
         lpTokenBalance = lpToken.balanceOf(user);
         dbTokenBalance = dbToken.balanceOf(user);
     }
