@@ -6,7 +6,7 @@ contract NftValues {
     // mapping(address => uint256) public collectionFloorPrice; // map nft collection address to its floor price in Eth or WEI
     // mapping(address => mapping(uint256 => uint256)) public nftValues; // map tokenId to our given value in Eth or WEI
 
-    address[] public collections;
+    address[] public collectionAddresses; //renamed from collections
     uint public collectionsLength;
 
     mapping(address => NftCollection) public nftCollections; //renamed from collectionData
@@ -38,17 +38,17 @@ contract NftValues {
     }
 
     // Function to update the floor price
-    function updateFloorPrice(address collection, uint256 newFloorPrice) external onlyOwner {
-        nftCollections[collection].floorPrice = newFloorPrice;
-        emit FloorPriceUpdated(collection, newFloorPrice, block.timestamp);
-        updateNftPrice(collection);
+    function updateFloorPrice(address collectionAddress, uint256 newFloorPrice) external onlyOwner {
+        nftCollections[collectionAddress].floorPrice = newFloorPrice;
+        emit FloorPriceUpdated(collectionAddress, newFloorPrice, block.timestamp);
+        updateNftPrice(collectionAddress);
     }
 
     function updateNftPrice(address collectionAddress) external onlyOwner {
         NftCollection nftCollection = nftCollections[collectionAddress];
         uint256 floorPrice = nftCollection.floorPrice;
         uint256[] nftIds = nftCollection.collectionIds;
-        mapping(uint256 => uint256) nftPrices = nftCollection.nftPrice;
+        mapping(uint256 => uint256) nftPrices = nftCollection.nftPrice; //why this mapping?
 
         // uint256 currPrice = nftValues[tokenId];
         uint i;
@@ -56,8 +56,8 @@ contract NftValues {
         uint256 oldPrice;
         for (i = 0; i<nftIds.length; i++) {
             nftId = nftIds[i];
-            oldPrice = nftPrices[nftId]
-            nftPrices[nftId] = nftPricingScheme(collection, nftId, oldPrice, floorPrice);
+            oldPrice = nftPrices[nftId];
+            nftPrices[nftId] = nftPricingScheme(collectionAddress, nftId, oldPrice, floorPrice);
             emit NftPriceUpdated(collectionAddress, nftId, nftPrices[nftId], block.timestamp);
         } 
         nftCollection.nftPrice = nftPrices;
@@ -65,32 +65,32 @@ contract NftValues {
     }
 
     // TODO: logic on adjusting the price we evaluate the individual NFT to be if we want to analyse it beyond it's floor price
-    function nftPricingScheme(address collection, uint256 id, uint256 oldPrice, uint256 floorPrice) external returns (uint256) {
+    function nftPricingScheme(address collectionAddress, uint256 nftId, uint256 oldPrice, uint256 floorPrice) external returns (uint256) { // is nftId = tokenId?
         return floorPrice;
     }
 
-    function getNftIdPrice(address collection, uint256 tokenId) public view returns (uint256) {
-        return nftCollections[collection].nftPrice[tokenId];
+    function getNftIdPrice(address collectionAddress, uint256 tokenId) public view returns (uint256) {
+        return nftCollections[collectionAddress].nftPrice[tokenId];
     }
 
-    function getFloorPrice(address collection) public view returns (uint256) {
-        return nftCollections[collection].floorPrice;
+    function getFloorPrice(address collectionAddress) public view returns (uint256) {
+        return nftCollections[collectionAddress].floorPrice;
     }
 
     function getCollectionList() public view returns (address[]) {
-        return collections;
+        return collectionAddresses;
     }
 
-    function getNftIds(address collection) public view returns (uint256[]) {
-        return nftCollections[collection].collectionIds;
+    function getNftIds(address collectionAddress) public view returns (uint256[]) {
+        return nftCollections[collectionAddress].collectionIds;
     }
 
-    function addCollection(address collection) private {
+    function addCollection(address collectionAddress) private {
         uint len = getCollectionListLength();
-        if (isCollectionPartOfList(collection)) {
+        if (isCollectionPartOfList(collectionAddress)) {
             return;
-        } else if (checkCollection(collection)) {
-            collections[len] = collection;
+        } else if (checkCollection(collectionAddress)) {
+            collectionAddresses[len] = collectionAddress;
             collectionsLength += 1;
         }
 
@@ -100,10 +100,10 @@ contract NftValues {
         return collectionsLength;
     }
 
-    function isCollectionPartOfList(address collection) public view returns (bool) {
+    function isCollectionPartOfList(address collectionAddress) public view returns (bool) {
         uint len = getCollectionListLength();
         for (uint i =0; i<len; i++) {
-            if (collections[i] == collection) {
+            if (collectionAddresses[i] == collectionAddress) {
                 return true;
             }
         }
