@@ -54,7 +54,6 @@ contract CollateralManager {
         return true;
     }
 
-
     // Retrieves the value of an NFT
     function getNFTValue(address contractAddr, uint256 tokenId) external view returns (uint256) {
         return nftValues.getNftIdPrice(contractAddr, tokenId);
