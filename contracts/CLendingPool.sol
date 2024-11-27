@@ -98,10 +98,6 @@ contract LendingPool is ReentrancyGuard {
         emit Withdrawn(msg.sender, amount);
     }
 
-
-    
-   
-
     // Allows users to borrow ETH from the pool using NFT collateral
     function borrow(uint256 amount) external nonReentrant whenNotPaused {
         require(netLoan <= poolBalance, "[*ERROR*] Insufficient pool liquidity!");
@@ -117,12 +113,10 @@ contract LendingPool is ReentrancyGuard {
 
         // mint and give debt tokens to borrower
         dbToken.mint(msg.sender, totalLoan);
+
+        // send eth to borrower
         (bool success, ) = msg.sender.call{value: totalLoan}("");
         require(success, "[*ERROR*] Transfer of debt tokens failed!");
-        
-        // TODO: send 'amount' to caller
-
-        // END TODO
 
         //update state of lend pool
         poolBalance -= netLoan;
