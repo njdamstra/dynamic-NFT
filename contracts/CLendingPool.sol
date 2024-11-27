@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./CLPToken.sol";
-import "./CDBToken.sol";
-import "./CCollateralManager.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol"; // added for security
 
-contract LendingPool {
+import "./CCollateralManager.sol";
+import "./CDBToken.sol";
+import "./CLPToken.sol";
+
+
+contract LendingPool is ReentrancyGuard {
     mapping(address => uint256) public netBorrowedUsers; // Tracks ETH (without interest) currently borrowed by users
     mapping(address => uint256) public netSuppliedUsers; // Tracks ETH (without interest) supplied by users
     mapping(address => uint256) public totalBorrowedUsers; // Tracks ETH (with interest) currently borrowed by users
@@ -56,7 +59,7 @@ contract LendingPool {
     }
 
     // Allows users to withdraw ETH from the pool
-    function withdraw(uint256 amount) external {
+    function withdraw(uint256 amount) external nonReentrant {
         require(amount > 0, "[*ERROR*] Cannot withdraw zero ETH!");
         uint256 userBalance = lpToken.balanceOf(msg.sender);
         require(userBalance >= amount, "[*ERROR*] Insufficient LP tokens!");
@@ -74,7 +77,7 @@ contract LendingPool {
     }
 
     // Allows users to borrow ETH from the pool using NFT collateral
-    function borrow(uint256 amount, uint256 nftId) external {
+    function borrow(uint256 amount, uint256 nftId) external nonReentrant {
         require(netLoan <= poolBalance, "[*ERROR*] Insufficient pool liquidity!");
         // calculate interest as 10% of borrowed amount
         uint256 netLoan = amount;
