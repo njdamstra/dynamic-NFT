@@ -55,7 +55,7 @@ contract CollateralManager {
 
     // Retrieve the value of an NFT
     function getNFTValue(address contractAddress, uint256 tokenId) public view returns (uint256) {
-        return nftValues.getNftIdPrice(contractAddress, tokenId);
+        return nftValues.getTokenIdPrice(contractAddress, tokenId);
     }
 
     // TODO: update func arguments and logic with pool

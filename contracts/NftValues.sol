@@ -69,7 +69,7 @@ contract NftValues {
         return floorPrice;
     }
 
-    function getNftIdPrice(address collectionAddress, uint256 tokenId) public view returns (uint256) {
+    function getTokenIdPrice(address collectionAddress, uint256 tokenId) public view returns (uint256) {
         return nftCollections[collectionAddress].nftPrice[tokenId];
     }
 
