@@ -8,7 +8,6 @@ import "./CCollateralManager.sol";
 contract LendingPool {
     mapping(address => uint256) public borrowed; // Tracks ETH borrowed by users
     uint256 public totalBorrowed;    // Total ETH borrowed from the pool
-    uint256 public interestReserve;  // Accumulated interest paid by borrowers
     uint256 public poolBalance;      // Total ETH in the pool
 
     LPToken public lpToken;          // Loan Pool Token
@@ -27,6 +26,34 @@ contract LendingPool {
     modifier onlyOwner() {
         require(msg.sender == owner, "[*ERROR*] Not the contract owner!");
         _;
+    }
+
+    // Allows users to supply ETH to the pool
+    function supply(uint256 amount) external payable {
+        require(msg.value == amount, "[*ERROR*] Incorrect amount of ETH supplied!");
+        require(amount > 0, "[*ERROR*] Cannot supply zero ETH!");
+
+        poolBalance += amount;
+
+        // Mint LP tokens proportional to the supplied amount
+        lpToken.mint(msg.sender, amount);
+    }
+
+    // Allows users to withdraw ETH from the pool
+    function withdraw(uint256 amount) external {
+        require(amount > 0, "[*ERROR*] Cannot withdraw zero ETH!");
+        uint256 userBalance = lpToken.balanceOf(msg.sender);
+        require(userBalance >= amount, "[*ERROR*] Insufficient LP tokens!");
+
+        // Update the pool balance
+        poolBalance -= amount;
+
+        // Burn the LP tokens
+        lpToken.burn(msg.sender, amount);
+
+        // Transfer the ETH to the user
+        (bool success, ) = msg.sender.call{value: amount}("");
+        require(success, "[*ERROR*] Transfer failed!");
     }
 
     // Allows users to borrow ETH from the pool using NFT collateral
@@ -60,12 +87,26 @@ contract LendingPool {
         uint256 interest = (totalDebt * 10) / 100; // 10% interest
         require(msg.value == totalDebt + interest, "[*ERROR*] Incorrect repayment amount!");
 
+        // Burn DB tokens from the borrower
         dbToken.burn(msg.sender, totalDebt);
 
         borrowed[msg.sender] -= totalDebt;
         totalBorrowed -= totalDebt;
         poolBalance += totalDebt;
-        interestReserve += interest;
+
+        // Distribute interest proportionally as LP tokens or add to pool if no lenders
+        uint256 totalSupply = lpToken.totalSupply();
+        if (totalSupply > 0) {
+            // Distribute interest proportionally among lenders
+            for (uint256 i = 0; i < totalSupply; i++) {
+                address lender = lpToken.holderAt(i); // Assumes LPToken has a holder-tracking feature
+                uint256 lenderShare = (lpToken.balanceOf(lender) * interest) / totalSupply;
+                lpToken.mint(lender, lenderShare);
+            }
+        } else {
+            // If no lenders, add interest to the pool balance
+            poolBalance += interest;
+        }
     }
 
     // Liquidates an NFT if the health factor drops below 1.2
@@ -84,7 +125,18 @@ contract LendingPool {
         dbToken.burn(borrower, debtToCover);
 
         poolBalance += amountToPool;
-        interestReserve += profit;
+
+        // Distribute profit as interest
+        uint256 totalSupply = lpToken.totalSupply();
+        if (totalSupply > 0) {
+            for (uint256 i = 0; i < totalSupply; i++) {
+                address lender = lpToken.holderAt(i); // Assumes LPToken has a holder-tracking feature
+                uint256 lenderShare = (lpToken.balanceOf(lender) * profit) / totalSupply;
+                lpToken.mint(lender, lenderShare);
+            }
+        } else {
+            poolBalance += profit; // If no lenders, add profit to pool balance
+        }
     }
 
     // Retrieve user account data including LP and DB tokens
@@ -93,15 +145,11 @@ contract LendingPool {
     view
     returns (
         uint256 totalDebtETH,
-        uint256 availableBorrowsETH,
-        uint256 healthFactor,
         uint256 lpTokenBalance,
         uint256 dbTokenBalance
     )
     {
         totalDebtETH = borrowed[user];
-        availableBorrowsETH = collateralManager.getAvailableBorrows(user);
-        healthFactor = collateralManager.getHealthFactor(user, 0); // Simplified for a single NFT
         lpTokenBalance = lpToken.balanceOf(user);
         dbTokenBalance = dbToken.balanceOf(user);
     }
