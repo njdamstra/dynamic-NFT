@@ -12,19 +12,20 @@ contract CollateralManager {
 
     struct CollateralProfile {
         uint256 numNfts;
-        NftProvided[] nftList;
-        uint256 totalCol;
+        Nft[] nftList;
+        uint256 totalCollateral;
     }
 
-    struct NftProvided {
-        address contractAddr;
+    struct Nft { //renamed from NftProvided
+        address contractAddress;
         uint256 tokenId;
         uint256 value;
         IERC721 nftContract;
     }
+
     address public pool;
     NftTrader public trader;
-    NftValues public nftValue;
+    NftValues public nftValues;
 
     constructor() {
         pool = msg.sender; // LendingPool is the owner
@@ -47,7 +48,7 @@ contract CollateralManager {
         require(nft.ownerOf(tokenId) == sender, "Caller must own the NFT");
         // TODO: check if it's supported by Alchemy in NftValues.sol
         bool success = nftValues.checkContract(nftContract);
-        if (success!) {
+        if (!success) {
             return false;
         }
         return true;
@@ -95,8 +96,8 @@ contract CollateralManager {
         IERC721 nft = IERC72(nftContract);
         require(collateralManager.isNftValid(msg.sender, nft, contractAddr, tokenId), "[*ERROR*] NFT collateral is not valid");
         uint256 nftValue = getNFTValue(contractAddr, tokenId);
-        NftProvided nftData;
-        nftData.contractAddr = contractAddr;
+        Nft nftData;
+        nftData.contractAddress = contractAddr;
         nftData.tokenId = tokenId;
         nftData.value = nftValue;
         nftData.nftContract = nft;
@@ -104,16 +105,16 @@ contract CollateralManager {
         if (borrowersCollateral[msg.sender] == address(0)) {
             CollateralProfile profile;
             profile.numNfts = 1;
-            NftProvided[] nftList;
+            Nft[] nftList;
             nftList[0] = nftData;
             profile.nftList = nftList;
-            profile.totalCol = nftValue;
+            profile.totalCollateral = nftValue;
             borrowersCollateral[msg.sender] = profile;
         } else {
             // TODO: check that they aren't reusing the same NFT.
             CollateralProfile profile = borrowersCollateral[msg.sender];
-            NftProvided[] nftList = profile.nftList;
-            profile.totalCol += nftValue;
+            Nft[] nftList = profile.nftList;
+            profile.totalCollateral += nftValue;
             profile.nftList[profile.numNfts] = nftData;
             profile.numNfts += 1;
             borrowersCollateral[msg.sender] = profile;
@@ -122,7 +123,7 @@ contract CollateralManager {
 
     // TODO: combine all of the NFTs value in users profile with there updated values
     function getCollateralProfilesValue(address borrower) external returns (uint256) {
-        returns 100000;
+        return 100000;
     }
 
     // TODO: take borrows collateral and transfer all of the collateral
@@ -132,7 +133,7 @@ contract CollateralManager {
         require(healthFactor >= 120, "[*ERROR*] Health factor would fall below 1.2!");
 
 
-        returns true; 
+        return true;
     }
 
     // TODO: helper function for transferCollateral of transfering one NFT

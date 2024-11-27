@@ -62,5 +62,4 @@ contract NftTrader {
 
    receive() external payable {}
 
-
 }

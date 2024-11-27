@@ -65,6 +65,11 @@ contract LendingPool is ReentrancyGuard {
         poolBalance += msg.value;
     }
 
+    receive() external payable {
+        require(msg.value > 0, "[*ERROR*] Cannot send zero ETH!");
+        poolBalance += msg.value;
+    }
+
     // Allows users to supply ETH to the pool
     function supply(uint256 amount) external payable {
         require(msg.value == amount, "[*ERROR*] Incorrect amount of ETH supplied!");
