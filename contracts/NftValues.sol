@@ -102,13 +102,24 @@ contract NftValues {
         emit CollectionAdded(collectionAddress, name, block.timestamp);
     }
 
+    // Add a token to a collection
+    function addTokenToCollection(address collectionAddress, uint256 tokenId, uint256 initialPrice) external onlyOwner {
+        require(isCollectionPartOfList(collectionAddress), "[*ERROR*] Collection not found!");
+        NftCollection storage collection = nftCollections[collectionAddress];
+        require(collection.nftPrice[tokenId] == 0, "[*ERROR*] Token already added!");
+
+        collection.tokenIds.push(tokenId);
+        collection.nftPrice[tokenId] = initialPrice;
+
+    }
+
     function getCollectionListLength() public view returns (uint) {
         return collectionsLength;
     }
 
+    // Helper: Check if a collection is part of the list
     function isCollectionPartOfList(address collectionAddress) public view returns (bool) {
-        uint len = getCollectionListLength();
-        for (uint i =0; i<len; i++) {
+        for (uint256 i = 0; i < collectionAddresses.length; i++) {
             if (collectionAddresses[i] == collectionAddress) {
                 return true;
             }
@@ -116,15 +127,9 @@ contract NftValues {
         return false;
     }
 
-    // TODO: Check if contract is supported by Alchemy
-    function checkContract(address contractAddress) public view returns (bool) {
-        if (isCollectionPartOfList()) {
-            return true;
-        } else {
-            // TODO: check if contract is supported by Alchemy
-            // if yes, return true, else return false
-        }
-
-        return false;
+    // TODO Placeholder for external contract checks (e.g., Alchemy integration)
+    function checkCollection(address collectionAddress) public view returns (bool) {
+        // For now, simply check if the collection is already added
+        return isCollectionPartOfList(collectionAddress);
     }
 }
