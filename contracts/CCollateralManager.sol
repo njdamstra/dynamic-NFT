@@ -24,12 +24,12 @@ contract CollateralManager {
     }
 
     address public pool;
-    NftTrader public trader;
+    NftTrader public nftTrader;
     NftValues public nftValues;
 
     constructor() {
         pool = msg.sender; // LendingPool is the owner
-        trader = new NftTrader;
+        nftTrader = new NftTrader;
         nftValues = new NftValues;
     }
 
@@ -55,8 +55,8 @@ contract CollateralManager {
     }
 
     // Retrieves the value of an NFT
-    function getNFTValue(address contractAddr, uint256 tokenId) external view returns (uint256) {
-        return nftValues.getNftIdPrice(contractAddr, tokenId);
+    function getNFTValue(address contractAddress, uint256 tokenId) external view returns (uint256) {
+        return nftValues.getNftIdPrice(contractAddress, tokenId);
     }
 
     // Calculates the health factor for a user
@@ -81,22 +81,22 @@ contract CollateralManager {
         delete nftValues[borrower][nftId];
         delete nftOwners[nftId];
 
-        trader.addListing(price, contractAddr, tokenId);
+        nftTrader.addListing(price, contractAddr, tokenId);
 
         emit NFTLiquidated(borrower, nftId, nftValue);
         return nftValue;
     }
     
     // allows user to use multiple NFTs in there initial NFT loan by aggregating them together using this function!
-    function aggregateCollateral(address contractAddr, uint256 tokenId) external {
+    function aggregateCollateral(address contractAddress, uint256 tokenId) external {
         // validate the collateral --> caller is the owner of the NFT, NFT is registered!
         // retrieve NFTs value we set for it
         // add it to this borrows CollateralProfile
-        IERC721 nft = IERC72(nftContract);
-        require(collateralManager.isNftValid(msg.sender, nft, contractAddr, tokenId), "[*ERROR*] NFT collateral is not valid");
-        uint256 nftValue = getNFTValue(contractAddr, tokenId);
+        IERC721 nft = IERC721(nftContract);
+        require(collateralManager.isNftValid(msg.sender, nft, contractAddress, tokenId), "[*ERROR*] NFT collateral is not valid");
+        uint256 nftValue = getNFTValue(contractAddress, tokenId);
         Nft nftData;
-        nftData.contractAddress = contractAddr;
+        nftData.contractAddress = contractAddress;
         nftData.tokenId = tokenId;
         nftData.value = nftValue;
         nftData.nftContract = nft;

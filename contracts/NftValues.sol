@@ -12,10 +12,10 @@ contract NftValues {
     mapping(address => NftCollection) public nftCollections; //renamed from collectionData -F
 
     struct NftCollection {
-        address contractAddress; // NFT contract address
+        address contractAddress; // NFT contract address or is it the same as collectionAddress?
         string name;
         uint256 floorPrice;
-        uint256[] collectionIds; // list of tokenIds used for this collection
+        uint256[] tokenIds; // list of tokenIds used for this collection //is tokeId = nftid? -F
         mapping(uint256 => uint256) nftPrice;
     }
 
@@ -47,7 +47,7 @@ contract NftValues {
     function updateNftPrice(address collectionAddress) external onlyOwner {
         NftCollection nftCollection = nftCollections[collectionAddress];
         uint256 floorPrice = nftCollection.floorPrice;
-        uint256[] nftIds = nftCollection.collectionIds;
+        uint256[] nftIds = nftCollection.tokenIds;
         mapping(uint256 => uint256) nftPrices = nftCollection.nftPrice; //why this mapping? -F
 
         // uint256 currPrice = nftValues[tokenId];
@@ -82,7 +82,7 @@ contract NftValues {
     }
 
     function getNftIds(address collectionAddress) public view returns (uint256[]) {
-        return nftCollections[collectionAddress].collectionIds;
+        return nftCollections[collectionAddress].tokenIds;
     }
 
     function addCollection(address collectionAddress) private {
