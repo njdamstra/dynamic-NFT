@@ -21,7 +21,7 @@ contract NftValues {
     event NftPriceUpdated(address indexed collectionAddress, uint256 indexed tokenId, uint256 newNftPrice, uint256 timestamp);
     event CollectionAdded(address indexed collectionAddress, string name, uint256 timestamp);
 
-    constructor(address _owner) { //How do we get the owner? -F
+    constructor(address _owner) { //Is the owner not always CollateralManager? -F
         owner = _owner;
         collectionsLength = 0;
     }
@@ -31,7 +31,7 @@ contract NftValues {
         _;
     }
 
-    // Function to transfer ownership if needed
+    // Function to transfer ownership if needed //if the owner is always the COllateral Manager, we do not need this function
     function transferOwnership(address newOwner) external onlyOwner {
         owner = newOwner;
     }
@@ -56,7 +56,6 @@ contract NftValues {
             uint256 tokenId = collection.tokenIds[i];
             uint256 oldPrice = collection.nftPrice[tokenId];
             uint256 newPrice = nftPricingScheme(collectionAddress, tokenId, oldPrice, floorPrice);
-
             collection.nftPrice[tokenId] = newPrice;
 
             emit NftPriceUpdated(collectionAddress, tokenId, newPrice, block.timestamp);
@@ -65,7 +64,7 @@ contract NftValues {
 
 
     // TODO: logic on adjusting the price we evaluate the individual NFT to be if we want to analyse it beyond it's floor price
-    function nftPricingScheme(address collectionAddress, uint256 nftId, uint256 oldPrice, uint256 floorPrice) external returns (uint256) { // is nftId = tokenId?
+    function nftPricingScheme(address collectionAddress, uint256 tokenId, uint256 oldPrice, uint256 floorPrice) external returns (uint256) {
         return floorPrice;
     }
 
@@ -131,5 +130,11 @@ contract NftValues {
     function checkCollection(address collectionAddress) public view returns (bool) {
         // For now, simply check if the collection is already added
         return isCollectionPartOfList(collectionAddress);
+    }
+
+    // TODO Placeholder for external contract checks (e.g., Alchemy integration)
+    function checkContract(address contractAddress) public view returns (bool) {
+        // Using Alchemy
+        return false;
     }
 }

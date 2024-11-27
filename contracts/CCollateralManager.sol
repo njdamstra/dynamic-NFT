@@ -41,8 +41,7 @@ contract CollateralManager {
         _;
     }
 
-    // Events for transparency
-
+    // Events
     event NFTListed(address indexed borrower, address indexed contractAddress, uint256 tokenId, uint256 valueListing);
     event CollateralAdded(address indexed borrower, address indexed contractAddress, uint256 tokenId, uint256 value);
 
@@ -61,7 +60,7 @@ contract CollateralManager {
     // TODO: update func arguments and logic with pool
     // Calculate the health factor for a user
     function getHealthFactor(address borrower) public view returns (uint256) {
-        uint256 totalCollateral = getCollateralProfilesValue(borrower);
+        uint256 totalCollateral = getCollateralValue(borrower);
         uint256 totalDebt = LendingPool(pool).totalBorrowedUsers(borrower);
 
         if (totalDebt == 0) return type(uint256).max; // Infinite health factor if no debt
@@ -112,7 +111,7 @@ contract CollateralManager {
     }
 
     // Aggregate collateral by adding NFTs to a borrower's profile
-    function aggregateCollateral(address contractAddress, uint256 tokenId) external {
+    function addCollateral(address contractAddress, uint256 tokenId) external {
         require(isNftValid(msg.sender, contractAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
         uint256 nftValue = getNFTValue(contractAddress, tokenId);
 
@@ -136,7 +135,7 @@ contract CollateralManager {
     }
 
     // Get the total value of all NFTs in a borrower's collateral profile
-    function getCollateralProfilesValue(address borrower) public view returns (uint256) {
+    function getCollateralValue(address borrower) public view returns (uint256) {
         CollateralProfile storage profile = borrowersCollateral[borrower];
         uint256 totalValue = 0;
 
@@ -144,16 +143,6 @@ contract CollateralManager {
             totalValue += profile.nftList[i].value;
         }
         return totalValue;
-    }
-
-    // TODO: take borrows collateral and transfer all of the collateral
-    // Transfer collateral to the pool
-    function transferCollateral(address borrower, uint256 totalLoan, uint256 netBorrowed) external onlyPool returns (bool) {
-        uint256 totalCollateral = getCollateralProfilesValue(borrower);
-        uint256 healthFactor = getHealthFactor(borrower);
-        require(healthFactor >= 120, "[*ERROR*] Health factor would fall below 1.2!");
-
-        return true;
     }
 
 }
