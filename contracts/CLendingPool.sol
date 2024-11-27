@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol"; // added for security
-
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./CCollateralManager.sol";
 import "./CDBToken.sol";
 import "./CLPToken.sol";
@@ -12,6 +12,7 @@ contract LendingPool is ReentrancyGuard {
     mapping(address => uint256) public netBorrowedUsers; // Tracks ETH (without interest) currently borrowed by users
     mapping(address => uint256) public netSuppliedUsers; // Tracks ETH (without interest) supplied by users
     mapping(address => uint256) public totalBorrowedUsers; // Tracks ETH (with interest) currently borrowed by users
+
 
     uint256 public netBorrowedPool;    // Tracks ETH (without interest) borrowed from the pool
     uint256 public totalBorrowedPool;    // Tracks ETH (with interest) borrowed from the pool
@@ -97,36 +98,39 @@ contract LendingPool is ReentrancyGuard {
         emit Withdrawn(msg.sender, amount);
     }
 
+
+    
+   
+
     // Allows users to borrow ETH from the pool using NFT collateral
-    function borrow(uint256 amount, uint256 nftId) external nonReentrant whenNotPaused {
+    function borrow(uint256 amount) external nonReentrant whenNotPaused {
         require(netLoan <= poolBalance, "[*ERROR*] Insufficient pool liquidity!");
+
         // calculate interest as 10% of borrowed amount
         uint256 netLoan = amount;
         uint256 interest = (amount * 10) / 100; // 10% interest
         uint256 totalLoan = amount + interest;
 
-        // check if NFT is registered within the pool
-        require(
-            collateralManager.isCollateralRegistered(msg.sender, nftId),
-            "[*ERROR*] NFT collateral not registered!"
-        );
+        // transfer NFTs to collateral manager
+        bool success = collateralManager.transferCollateral(msg.sender, totalLoan, netBorrowedUsers[msg.sender]);
+        require(success, "unable to transfer collateral to collateral manager");
 
-        // check if NFT value is sufficient for healthFactor > 1.2
-        uint256 nftValue = collateralManager.getNFTValue(msg.sender, nftId);
-        uint256 healthFactor = (nftValue * 100) / (netBorrowedUsers[msg.sender] + totalLoan); // Health factor
-        require(healthFactor >= 120, "[*ERROR*] Health factor would fall below 1.2!");
-
+        // mint and give debt tokens to borrower
         dbToken.mint(msg.sender, totalLoan);
         (bool success, ) = msg.sender.call{value: totalLoan}("");
-        require(success, "[*ERROR*] Transfer failed!");
+        require(success, "[*ERROR*] Transfer of debt tokens failed!");
+        
+        // TODO: send 'amount' to caller
 
+        // END TODO
+
+        //update state of lend pool
         poolBalance -= netLoan;
         netBorrowedPool += netLoan;
         totalBorrowedPool += totalLoan;
-
         netBorrowedUsers[msg.sender] += netLoan;
         totalBorrowedUsers[msg.sender] += totalLoan;
-
+        // create a borrow event
         emit Borrowed(msg.sender, amount, nftId);
 
     }
