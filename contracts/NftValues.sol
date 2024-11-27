@@ -86,4 +86,11 @@ contract NftValues {
     function getNftIds(address collection) public view returns (uint256[]) {
         return collectionData[collection].collectionIds;
     }
+
+    function addCollection(address collection) private {
+
+    }
+    function getCollectionListLength() public view returns (uint) {
+        return collection.length;
+    }
 }
