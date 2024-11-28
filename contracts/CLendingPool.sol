@@ -178,7 +178,7 @@ contract LendingPool is ReentrancyGuard {
     // this function is called by CM who transfers eth to Pool and this function updates LendPool accordingly
     // TODO update according to liquidate in CM
     function liquidate(address borrower, address collection, uint256 tokenId, uint256 amount) external onlyOwner {
-        uint256 healthFactor = collateralManager.getHealthFactor(borrower, nftId);
+        // uint256 healthFactor = collateralManager.getHealthFactor(borrower, nftId);
         // require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
         uint256 nftValue = collateralManager.getNFTValue(borrower, collection, tokenId);
         collateralManager.liquidateNFT(borrower, nftId);
