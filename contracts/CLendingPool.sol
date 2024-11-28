@@ -163,6 +163,7 @@ contract LendingPool is ReentrancyGuard {
             for (uint256 i = 0; i < activeTokens; i++) {
                 address lender = lpToken.holderAt(i); // Assumes LPToken has a holder-tracking feature
                 uint256 lenderShare = (lpToken.balanceOf(lender) * interest) / activeTokens;
+                //TODO ? do we need the token structure DBT?
                 uint256 before = netSuppliedUsers[lender]
                 uint256 after =
                 lpToken.mint(lender, lenderShare);
@@ -176,6 +177,7 @@ contract LendingPool is ReentrancyGuard {
 
     // Liquidates an NFT if the health factor drops below 1.2
     // this function is called by CM who transfers eth to Pool and this function updates LendPool accordingly
+    // TODO update according to liquidate in CM
     function liquidate(address borrower, address collection, uint256 tokenId) external onlyOwner {
         uint256 healthFactor = collateralManager.getHealthFactor(borrower, nftId);
         require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");

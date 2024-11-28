@@ -62,22 +62,15 @@ contract CollateralManager {
 
     // Get a list of all liquidatable NFTs for a user
     function getliquidatableCollateral(address borrower) public returns (Nft[]) {
-        uint256 healthFactor = getHealthFactor(borrower);
-        if (healthFactor < 120) {
-            updateLiquidatableCollateral(borrower, true);
-            return liquidatableCollateral[borrower];
-        }
-        else {
-            updateLiquidatableCollateral(borrower, false);
-            return liquidatableCollateral[borrower];
-            return;
-        }
+        updateLiquidatableCollateral(borrower);
+        return liquidatableCollateral[borrower];
     }
 
-    // @Helper for getliquidatableCollateral(address borrower);
-    function updateLiquidatableCollateral(address borrower, bool isLiquidatable) private {
+    // Update the liquidatableCollateral Mapping
+    function updateLiquidatableCollateral(address borrower) private {
+        uint256 healthFactor = getHealthFactor(borrower);
         Nft[] nftList = getNftList(borrower);
-        if (isLiquidatable) {
+        if (healthFactor < 120) {
             for (uint256 i = 0; i < nftList.length; i++) {
                 nftList[i].isLiquidatable = true;
             }
@@ -92,37 +85,67 @@ contract CollateralManager {
         }
     }
 
-    // TODO: function called by NftTrader when NFT gets bought by liquidator
-    // delete given NFT from borrowers NftProfile
+    // function called by NftTrader when NFT gets bought by liquidator
+    // delete given NFT from borrowers CollateralProfile
     // transfers NFT from CM to liquidator
-    //
     // this function calls liquidate in LendPool
-    function liquidateNFT(address liquidator, address collectionAddress, uint256 tokenId) external returns (uint256) {
+    function liquidateNft(address liquidator, address collectionAddress, uint256 tokenId, uint256 price) external returns (uint256) {
         IERC721 nftContract = IERC721(collectionAddress);
         address borrower = nftContract.ownerOf(tokenId);
 
-        return;
+        _deleteNftFromCollateralProfile(borrower, collectionAddress,tokenId);
+        updateLiquidatableCollateral(borrower);
+
+        /**TODO pay pool
+        * pay the ether price to the pool
+        * update liquidate function in pool
+        TODO END **/
+
+        nftContract.safeTransferFrom(address(this), liquidator, tokenId);
+
+        return price;
+    }
+    // @Helper for liquidateNft
+    function _deleteNftFromCollateralProfile(
+        address borrower,
+        address collectionAddress,
+        uint256 tokenId
+    ) internal {
+        CollateralProfile storage collateralProfile = borrowersCollateral[borrower];
+        uint256 length = collateralProfile.nftListLength;
+
+        for (uint256 i = 0; i < length; i++) {
+            Nft storage nft = collateralProfile.nftList[i];
+            if (nft.collectionAddress == collectionAddress && nft.tokenId == tokenId) {
+                // Swap the last element with the current element
+                collateralProfile.nftList[i] = collateralProfile.nftList[length - 1];
+                collateralProfile.nftList.pop(); // Remove the last element
+                collateralProfile.nftListLength--; // Decrement the count
+                break;
+            }
+        }
     }
 
     // Aggregate collateral by adding NFTs to a borrower's profile
     // automatically transfers collateral to CM even before initializing there loan
     // if added collateral boosts its health factor enough, deList collateral from NftTrader and mark NftProvided auctionable to false.
+    // TODO check functionality
     function addCollateral(address collectionAddress, uint256 tokenId) public external {
         require(isNftValid(msg.sender, collectionAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
+
         uint256 nftValue = getNftValue(collectionAddress, tokenId);
+        CollateralProfile storage collateralProfile = borrowersCollateral[msg.sender];
 
-        CollateralProfile storage profile = borrowersCollateral[msg.sender];
-
-        for (uint256 i = 0; i < profile.nftList.length; i++) {
+        for (uint256 i = 0; i < collateralProfile.nftList.length; i++) {
             require(
-                !(profile.nftList[i].collectionAddress == collectionAddress && profile.nftList[i].tokenId == tokenId),
+                !(collateralProfile.nftList[i].collectionAddress == collectionAddress && collateralProfile.nftList[i].tokenId == tokenId),
                 "[*ERROR*] Duplicate NFT in collateral!"
             );
         }
         IERC721 nftContract = IERC721(collectionAddress);
         nftContract.transferFrom(msg.sender, address(this), tokenId);
-        profile.nftList.push(Nft(collectionAddress, tokenId, nftContract,false));
-        profile.nftListLength++;
+        collateralProfile.nftList.push(Nft(collectionAddress, tokenId, nftContract,false));
+        collateralProfile.nftListLength++;
 
         emit CollateralAdded(msg.sender, collectionAddress, tokenId);
     }
@@ -134,8 +157,6 @@ contract CollateralManager {
     }
 
     // Get the total value of all NFTs in a borrower's collateral profile
-
-
     function getNftList(address borrower) private returns (Nft[]) {
         CollateralProfile memory collateralProfile = borrowersCollateral[borrower];
         return collateralProfile.nftList;
