@@ -48,7 +48,7 @@ contract NftTrader {
         IERC721 token = IERC721(collection);
         // Ensure the NFT is owned and approved by the collateralManager
         require(token.ownerOf(tokenId) == collateralManager, "[*ERROR*] Caller must own the NFT!");
-        require(token.isApprovedForAll(collateralManager, address(this)), "[*ERROR*] Contract is not approved!"); // might delete this so that approval only happens when purchased
+        require(token.isApproved(collateralManager, address(this), tokenId), "[*ERROR*] Contract is not approved!"); // might delete this so that approval only happens when purchased
         // check for no redundant listings currently; 
         require(!isListed(collection, tokenId), "[*ERROR*] token is already listed");
         // Add the listing
@@ -60,7 +60,8 @@ contract NftTrader {
         emit NFTListed(collection, tokenId, basePrice, collateralManager, auction, timestamp);
     }
 
-    // Delist an NFT
+    // Delist an NFT 
+    // (this shouldn't be called when some purchased the nft, this should only be called when the borrower wants to reedem there nft)
     function delist(address collection, uint256 tokenId) public onlyCollateralManager {
         // require(checkTokenId(collection, tokenId), "[*ERROR*] NFT is not listed!");
         require(isListed(collection, tokenId), "[*ERROR*] NFT is not listed!");
