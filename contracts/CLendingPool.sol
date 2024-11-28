@@ -163,6 +163,8 @@ contract LendingPool is ReentrancyGuard {
             for (uint256 i = 0; i < activeTokens; i++) {
                 address lender = lpToken.holderAt(i); // Assumes LPToken has a holder-tracking feature
                 uint256 lenderShare = (lpToken.balanceOf(lender) * interest) / activeTokens;
+                uint256 before = netSuppliedUsers[lender]
+                uint256 after =
                 lpToken.mint(lender, lenderShare);
             }
         } else {
