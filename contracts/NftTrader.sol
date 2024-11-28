@@ -2,12 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {ILendingPool} from "../interfaces/ILendingPool.sol"
 
 contract NftTrader {
     // map original nft contract address to mapping of nftid to Listing struct. // should we not use tokenId instead of nttId as uint256? -F
     mapping(address => mapping(uint256 => Listing)) public listings;
-    mapping(address => uint256) public poolBalances; //dont understand this mapping why do we track balances of users? -F
-
     // Listing struct has the price and seller (collateralManager contract) of the nft to be liquidated
     struct Listing {
         address seller; // in the case of one llending pool, this will always be the same (CM)
@@ -17,19 +16,21 @@ contract NftTrader {
         uint256 highestBid; // highest bid if one 
         address highestBidder; // addr of the last bid
         bool buyNow; // if auction duration has passed, then the liquidator can buy immediately at basePrice
+        address originalOwner;
     } // TODO: might delete buyNow since it's not necessary
 
 
     address public collateralManager;
     address public pool;
     uint public numCollections;
+    ILendingPool public IPool;
 
     constructor(address _collateralManager, address _pool) {
         collateralManager = _collateralManager; // caller of contract is the owner of the NFT
         // must make this the address of the collateralManager
         pool = _pool; // where we transfer money to
         numCollections = 0;
-        poolBalances[pool] = 0;
+        IPool = ILendingPool(pool);
     }
 
     modifier onlyCollateralManager() {
@@ -44,17 +45,19 @@ contract NftTrader {
     event Withdrawal(address indexed destination, uint256 amount);
 
     // Add an NFT listing
-    function addListing(uint256 basePrice, address collection, uint256 tokenId, bool auction, uint256 duration) public onlyCollateralManager {
+    function addListing(uint256 basePrice, address collection, uint256 tokenId, bool auction, uint256 duration, address originalOwner) public onlyCollateralManager {
         IERC721 token = IERC721(collection);
         // Ensure the NFT is owned and approved by the collateralManager
-        require(token.ownerOf(tokenId) == collateralManager, "[*ERROR*] Caller must own the NFT!");
-        require(token.isApproved(collateralManager, address(this), tokenId), "[*ERROR*] Contract is not approved!"); // might delete this so that approval only happens when purchased
+        require(token.ownerOf(tokenId) == collateralManager, "[*ERROR*] collateral manager must own the NFT!");
+        require(token.isApproved(collateralManager, address(this), tokenId), "[*ERROR*] Contract is not approved by collateral manager!"); // might delete this so that approval only happens when purchased
         // check for no redundant listings currently; 
-        require(!isListed(collection, tokenId), "[*ERROR*] token is already listed");
+        if (isListed(collection, tokenId)) {
+            return;
+        }
         // Add the listing
         uint256 timestamp = block.timestamp();
         uint256 auctionEnds = timestamp + duration;
-        listings[collection][tokenId] = Listing(collateralManager, basePrice, timestamp, auctionEnds, 0, address(0), !auction);
+        listings[collection][tokenId] = Listing(collateralManager, basePrice, timestamp, auctionEnds, 0, address(0), !auction, originalOwner);
 
         // create a listing event
         emit NFTListed(collection, tokenId, basePrice, collateralManager, auction, timestamp);
@@ -64,12 +67,11 @@ contract NftTrader {
     // (this shouldn't be called when some purchased the nft, this should only be called when the borrower wants to reedem there nft)
     function delist(address collection, uint256 tokenId) public onlyCollateralManager {
         // require(checkTokenId(collection, tokenId), "[*ERROR*] NFT is not listed!");
-        require(isListed(collection, tokenId), "[*ERROR*] NFT is not listed!");
-        // Remove the listing
-        delete listings[collection][tokenId];
-        // remove from tokenIdList 
-        // tokenIdList[collection][0] -= 1;
-        emit NFTDelisted(collection, tokenId);
+        if (isListed(collection, tokenId)) {
+            // Remove the listing
+            delete listings[collection][tokenId];
+            emit NFTDelisted(collection, tokenId);
+        }
     }
 
     function placeBid(address collection, uint256 tokenId) external payable {
@@ -103,10 +105,12 @@ contract NftTrader {
             listings[collection][tokenId].buyNow = true;
             return; // no one placed a bid before it ended --> buyNow at basePrice
         }
-        IERC721(collection).safeTransferFrom(item.seller, item.highestBidder, tokenId);
+        IERC721(collection).safeTransferFrom(item.seller, winner, tokenId);
         // Transfer the funds to the pool
         (bool success, ) = pool.call{value: item.highestBid}("");
         require(success, "Transfer to pool failed");
+
+        IPool.liquidate(item.originalOwner, collection, tokenId, item.highestBid);
 
         emit NFTAuctionEnded(collection, tokenId, item.highestBidder, item.highestBid, block.timestamp);
         delete listings[collection][tokenId];
@@ -120,6 +124,7 @@ contract NftTrader {
         Listing memory item = listings[collection][tokenId];
         // require(item.price > 0, "[*ERROR*] NFT not listed for sale!");
         endAuction(collection, tokenId);
+        uint256 amount = msg.value;
         require(item.buyNow, "[*ERROR*] NFT is not available to be purchased, it is still being auctioned");
         require(msg.value >= item.basePrice, "[*ERROR*] Insufficient funds!");
 
@@ -127,8 +132,11 @@ contract NftTrader {
         IERC721 token = IERC721(collection);
         token.safeTransferFrom(item.seller, msg.sender, tokenId);
         // send funds back to the pool
+
         (bool success, ) = pool.call{value: msg.value}("");
         require(success, "Transfer to pool failed");
+
+        IPool(pool).liquidate(item.originalOwner, collection, tokenId, amount);
         // Remove the listing
         delete listings[collection][tokenId];
         emit NFTPurchased(collection, tokenId, item.price, msg.sender);

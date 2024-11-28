@@ -131,7 +131,6 @@ contract LendingPool is ReentrancyGuard {
         totalBorrowedUsers[msg.sender] += totalLoan;
         // create a borrow event
         emit Borrowed(msg.sender, amount, nftId);
-
     }
 
     // Allows users to repay borrowed ETH with interest
@@ -178,24 +177,24 @@ contract LendingPool is ReentrancyGuard {
     // Liquidates an NFT if the health factor drops below 1.2
     // this function is called by CM who transfers eth to Pool and this function updates LendPool accordingly
     // TODO update according to liquidate in CM
-    function liquidate(address borrower, address collection, uint256 tokenId) external onlyOwner {
+    function liquidate(address borrower, address collection, uint256 tokenId, uint256 amount) external onlyOwner {
         uint256 healthFactor = collateralManager.getHealthFactor(borrower, nftId);
-        require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
-
-        uint256 nftValue = collateralManager.liquidateNFT(borrower, nftId);
+        // require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
+        uint256 nftValue = collateralManager.getNFTValue(borrower, collection, tokenId);
+        collateralManager.liquidateNFT(borrower, nftId);
         uint256 totalDebt = totalBorrowedUsers[borrower];
 
-        uint256 profit = nftValue > totalDebt ? nftValue - totalDebt : 0;
-        uint256 amountToPool = nftValue - profit;
+        uint256 debtReduction = amount > totalDebt ? totalDebt : amount;
+        uint256 remainingDebt = totalDebt > debtReduction ? totalDebt - debtReduction : 0;
 
-        dbToken.burn(borrower, totalDebt);
+        dbToken.burn(borrower, debtReduction);
 
-        poolBalance += amountToPool;
-        netBorrowedPool -= totalDebt;
-        totalBorrowedPool -= totalDebt;
+        netBorrowedUsers[borrower] = remainingDebt;
+        totalBorrowedUsers[borrower] = remainingDebt;
 
-        netBorrowedUsers[borrower] -= totalDebt;
-        totalBorrowedUsers[borrower] -= totalDebt;
+        poolBalance += debtReduction;
+
+        uint256 profit = amount > totalDebt ? amount - totalDebt : 0;
 
         // Distribute profit as interest
         uint256 activeTokens = lpToken.getActiveTokens()();
@@ -208,6 +207,10 @@ contract LendingPool is ReentrancyGuard {
         } else {
             poolBalance += profit; // If no lenders, add profit to pool balance
         }
+
+        netBorrowedPool -= totalDebt;
+        totalBorrowedPool -= totalDebt;
+
         emit Liquidated(borrower, nftId, amountToPool);
     }
 
