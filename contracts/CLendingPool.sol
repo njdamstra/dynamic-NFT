@@ -10,7 +10,7 @@ import "./CLPToken.sol";
 
 contract LendingPool is ReentrancyGuard {
     mapping(address => uint256) public netBorrowedUsers; // Tracks ETH (without interest) currently borrowed by users
-    mapping(address => uint256) public netSuppliedUsers; // Tracks ETH (without interest) supplied by users
+    mapping(address => uint256) public netSuppliedUsers; // Tracks ETH (without interest) supplied by users // do we need token???
     mapping(address => uint256) public totalBorrowedUsers; // Tracks ETH (with interest) currently borrowed by users
 
 
@@ -51,7 +51,7 @@ contract LendingPool is ReentrancyGuard {
     event Repaid(address indexed user, uint256 amount);
     event Liquidated(address indexed borrower, uint256 nftId, uint256 amountRecovered);
 
-    // Transfers ETH into the pool without return tokens
+    // Transfers ETH into the pool with minting tokens
     function transfer(uint256 amount) external payable {
         require(msg.value == amount, "[*ERROR*] Incorrect ETH amount sent!");
         require(amount > 0, "[*ERROR*] Cannot transfer zero ETH!");
@@ -177,11 +177,19 @@ contract LendingPool is ReentrancyGuard {
     // Liquidates an NFT if the health factor drops below 1.2
     // this function is called by CM who transfers eth to Pool and this function updates LendPool accordingly
     // TODO update according to liquidate in CM
+<<<<<<< HEAD
     function liquidate(address borrower, address collection, uint256 tokenId, uint256 amount) external onlyOwner {
         uint256 healthFactor = collateralManager.getHealthFactor(borrower, nftId);
         // require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
         uint256 nftValue = collateralManager.getNFTValue(borrower, collection, tokenId);
         collateralManager.liquidateNFT(borrower, nftId);
+=======
+    function liquidate(address borrower, address collectionAddress, uint256 tokenId) external onlyOwner {
+        uint256 healthFactor = collateralManager.getHealthFactor(borrower, collectionAddress, tokenId);
+        require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
+
+        uint256 nftValue = collateralManager.liquidateNFT(borrower, nftId);
+>>>>>>> 52f425a6ea7b13d0925b9e5d62e4ae2f1b5eeea5
         uint256 totalDebt = totalBorrowedUsers[borrower];
 
         uint256 debtReduction = amount > totalDebt ? totalDebt : amount;

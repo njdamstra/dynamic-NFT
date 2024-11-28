@@ -101,6 +101,7 @@ contract CollateralManager {
         }
     }
 
+    //TODO change pool
     // function called by NftTrader when NFT gets bought by liquidator
     // delete given NFT from borrowers CollateralProfile
     // transfers NFT from CM to liquidator
@@ -118,8 +119,18 @@ contract CollateralManager {
         // 2. update liquidatableCollateral
         updateLiquidatableCollateral(borrower);
 
+<<<<<<< HEAD
         // transfer NFT to liquidator
         emit Liquidated(borrower, collectionAddress, tokenId, amount);
+=======
+        // TODO change to directly pay pool?
+        (bool success, ) = pool.call{value: amount}("");
+        require(success, "Payment to pool failed");
+
+        // transfer NFT to liquidator
+        nftContract.safeTransferFrom(address(this), liquidator, tokenId);
+
+>>>>>>> 52f425a6ea7b13d0925b9e5d62e4ae2f1b5eeea5
     }
     // @Helper for liquidateNft
     function _deleteNftFromCollateralProfile(
@@ -145,7 +156,7 @@ contract CollateralManager {
     // Aggregate collateral by adding NFTs to a borrower's profile
     // automatically transfers collateral to CM even before initializing there loan
     // if added collateral boosts its health factor enough, deList collateral from NftTrader and mark NftProvided auctionable to false.
-    // TODO check functionality
+    // TODO update pool
     function addCollateral(address collectionAddress, uint256 tokenId) public {
         require(isNftValid(msg.sender, collectionAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
 
@@ -180,11 +191,12 @@ contract CollateralManager {
         return collateralProfile.nftList;
     }
 
+    //TODO get the actual value from oracle nftvalue
     function getNftValue(address collectionAddress, uint256 tokenId) private returns (uint256) {
         return Inftvalues.getTokenIdPrice(collectionAddress, tokenId);
     }
 
-    //TODO get the actual listing price for nft from nftValue
+    //TODO get the actual listing price for nft from nfttrader
     function getNftListingPrice(address collectionAddress, uint256 tokenId) private returns (uint256) {
         return;
     }
