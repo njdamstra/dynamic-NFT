@@ -10,7 +10,7 @@ import "./CLPToken.sol";
 
 contract LendingPool is ReentrancyGuard {
     mapping(address => uint256) public netBorrowedUsers; // Tracks ETH (without interest) currently borrowed by users
-    mapping(address => uint256) public netSuppliedUsers; // Tracks ETH (without interest) supplied by users
+    mapping(address => uint256) public netSuppliedUsers; // Tracks ETH (without interest) supplied by users // do we need token???
     mapping(address => uint256) public totalBorrowedUsers; // Tracks ETH (with interest) currently borrowed by users
 
 
@@ -51,7 +51,7 @@ contract LendingPool is ReentrancyGuard {
     event Repaid(address indexed user, uint256 amount);
     event Liquidated(address indexed borrower, uint256 nftId, uint256 amountRecovered);
 
-    // Transfers ETH into the pool without return tokens
+    // Transfers ETH into the pool with minting tokens
     function transfer(uint256 amount) external payable {
         require(msg.value == amount, "[*ERROR*] Incorrect ETH amount sent!");
         require(amount > 0, "[*ERROR*] Cannot transfer zero ETH!");

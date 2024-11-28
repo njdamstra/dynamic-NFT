@@ -85,6 +85,7 @@ contract CollateralManager {
         }
     }
 
+    //TODO change pool
     // function called by NftTrader when NFT gets bought by liquidator
     // delete given NFT from borrowers CollateralProfile
     // transfers NFT from CM to liquidator
@@ -102,7 +103,7 @@ contract CollateralManager {
         // 2. update liquidatableCollateral
         updateLiquidatableCollateral(borrower);
 
-        // TODO change to directly pay pool
+        // TODO change to directly pay pool?
         (bool success, ) = pool.call{value: amount}("");
         require(success, "Payment to pool failed");
 
@@ -167,7 +168,7 @@ contract CollateralManager {
         return collateralProfile.nftList;
     }
 
-    //TODO get the actual value from oracle nftrvalue
+    //TODO get the actual value from oracle nftvalue
     function getNftValue(address collectionAddress, uint256 tokenId) private returns (uint256) {
         return nftValues.getTokenIdPrice(collectionAddress, tokenId);
     }
