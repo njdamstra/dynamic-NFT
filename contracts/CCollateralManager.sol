@@ -93,7 +93,9 @@ contract CollateralManager {
         IERC721 nftContract = IERC721(collectionAddress);
         address borrower = nftContract.ownerOf(tokenId);
 
+        // 1. update borrowersCollateral
         _deleteNftFromCollateralProfile(borrower, collectionAddress,tokenId);
+        // 2. update liquidatableCollateral
         updateLiquidatableCollateral(borrower);
 
         /**TODO pay pool
