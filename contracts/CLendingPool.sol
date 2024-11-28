@@ -120,7 +120,7 @@ contract LendingPool is ReentrancyGuard {
         dbToken.mint(msg.sender, totalLoan);
 
         // send eth to borrower
-        (bool success, ) = msg.sender.call{value: totalLoan}("");
+        (bool success, ) = msg.sender.call{value: netLoan}("");
         require(success, "[*ERROR*] Transfer of debt tokens failed!");
 
         //update state of lend pool
@@ -173,7 +173,8 @@ contract LendingPool is ReentrancyGuard {
     }
 
     // Liquidates an NFT if the health factor drops below 1.2
-    function liquidate(address borrower, uint256 nftId) external onlyOwner {
+    // this function is called by CM who transfers eth to Pool and this function updates LendPool accordingly
+    function liquidate(address borrower, address collection, uint256 tokenId) external onlyOwner {
         uint256 healthFactor = collateralManager.getHealthFactor(borrower, nftId);
         require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
 
