@@ -89,7 +89,11 @@ contract CollateralManager {
     // delete given NFT from borrowers CollateralProfile
     // transfers NFT from CM to liquidator
     // this function calls liquidate in LendPool
-    function liquidateNft(address liquidator, address collectionAddress, uint256 tokenId, uint256 price) external returns (uint256) {
+    function liquidateNft(address liquidator, address collectionAddress, uint256 tokenId) public payable {
+        uint256 amount = msg.value;
+        require(liquidator != address(0), "Invalid liquidator address");
+        require(amount >= getNftListingPrice(collectionAddress,tokenId), "Insufficient Ether sent");
+
         IERC721 nftContract = IERC721(collectionAddress);
         address borrower = nftContract.ownerOf(tokenId);
 
@@ -98,11 +102,11 @@ contract CollateralManager {
         // 2. update liquidatableCollateral
         updateLiquidatableCollateral(borrower);
 
-        /**TODO pay pool
-        * pay the ether price to the pool
-        * update liquidate function in pool
-        TODO END **/
+        // TODO change to directly pay pool
+        (bool success, ) = pool.call{value: amount}("");
+        require(success, "Payment to pool failed");
 
+        // transfer NFT to liquidator
         nftContract.safeTransferFrom(address(this), liquidator, tokenId);
 
         return price;
@@ -132,7 +136,7 @@ contract CollateralManager {
     // automatically transfers collateral to CM even before initializing there loan
     // if added collateral boosts its health factor enough, deList collateral from NftTrader and mark NftProvided auctionable to false.
     // TODO check functionality
-    function addCollateral(address collectionAddress, uint256 tokenId) public external {
+    function addCollateral(address collectionAddress, uint256 tokenId) public {
         require(isNftValid(msg.sender, collectionAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
 
         uint256 nftValue = getNftValue(collectionAddress, tokenId);
@@ -166,6 +170,11 @@ contract CollateralManager {
 
     function getNftValue(address collectionAddress, uint256 tokenId) private returns (uint256) {
         return nftValues.getTokenIdPrice(collectionAddress, tokenId);
+    }
+
+    //TODO get the actual listing price for nft from nftValue
+    function getNftListingPrice(address collectionAddress, uint256 tokenId) private returns (uint256) {
+        return;
     }
 
     function getNftListValue(address borrower) private returns (uint256) {
