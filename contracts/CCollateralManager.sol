@@ -109,7 +109,6 @@ contract CollateralManager {
         // transfer NFT to liquidator
         nftContract.safeTransferFrom(address(this), liquidator, tokenId);
 
-        return price;
     }
     // @Helper for liquidateNft
     function _deleteNftFromCollateralProfile(
@@ -135,7 +134,7 @@ contract CollateralManager {
     // Aggregate collateral by adding NFTs to a borrower's profile
     // automatically transfers collateral to CM even before initializing there loan
     // if added collateral boosts its health factor enough, deList collateral from NftTrader and mark NftProvided auctionable to false.
-    // TODO check functionality
+    // TODO update pool
     function addCollateral(address collectionAddress, uint256 tokenId) public {
         require(isNftValid(msg.sender, collectionAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
 
@@ -168,11 +167,12 @@ contract CollateralManager {
         return collateralProfile.nftList;
     }
 
+    //TODO get the actual value from oracle nftrvalue
     function getNftValue(address collectionAddress, uint256 tokenId) private returns (uint256) {
         return nftValues.getTokenIdPrice(collectionAddress, tokenId);
     }
 
-    //TODO get the actual listing price for nft from nftValue
+    //TODO get the actual listing price for nft from nfttrader
     function getNftListingPrice(address collectionAddress, uint256 tokenId) private returns (uint256) {
         return;
     }
