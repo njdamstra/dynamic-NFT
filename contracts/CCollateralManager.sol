@@ -119,18 +119,8 @@ contract CollateralManager {
         // 2. update liquidatableCollateral
         updateLiquidatableCollateral(borrower);
 
-<<<<<<< HEAD
         // transfer NFT to liquidator
         emit Liquidated(borrower, collectionAddress, tokenId, amount);
-=======
-        // TODO change to directly pay pool?
-        (bool success, ) = pool.call{value: amount}("");
-        require(success, "Payment to pool failed");
-
-        // transfer NFT to liquidator
-        nftContract.safeTransferFrom(address(this), liquidator, tokenId);
-
->>>>>>> 52f425a6ea7b13d0925b9e5d62e4ae2f1b5eeea5
     }
     // @Helper for liquidateNft
     function _deleteNftFromCollateralProfile(
