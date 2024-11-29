@@ -47,9 +47,9 @@ contract LendingPool is ReentrancyGuard {
     // events for transparency
     event Supplied(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
-    event Borrowed(address indexed user, uint256 amount, uint256 nftId);
+    event Borrowed(address indexed user, uint256 amount);
     event Repaid(address indexed user, uint256 amount);
-    event Liquidated(address indexed borrower, uint256 nftId, uint256 amountRecovered);
+    event Liquidated(address indexed borrower, uint256 tokenId, uint256 amountRecovered);
 
     // Transfers ETH into the pool with minting tokens
     function transfer(uint256 amount) external payable {
@@ -112,6 +112,7 @@ contract LendingPool is ReentrancyGuard {
         uint256 interest = (amount * 10) / 100; // 10% interest
         uint256 totalLoan = amount + interest;
 
+        //TODO get the NFT value & ensure HF
         // transfer NFTs to collateral manager
         bool success = collateralManager.transferCollateral(msg.sender, totalLoan, netBorrowedUsers[msg.sender]);
         require(success, "unable to transfer collateral to collateral manager");
@@ -130,7 +131,7 @@ contract LendingPool is ReentrancyGuard {
         netBorrowedUsers[msg.sender] += netLoan;
         totalBorrowedUsers[msg.sender] += totalLoan;
         // create a borrow event
-        emit Borrowed(msg.sender, amount, nftId);
+        emit Borrowed(msg.sender, amount);
     }
 
     // Allows users to repay borrowed ETH with interest
@@ -180,8 +181,9 @@ contract LendingPool is ReentrancyGuard {
     function liquidate(address borrower, address collection, uint256 tokenId, uint256 amount) external onlyOwner {
         // uint256 healthFactor = collateralManager.getHealthFactor(borrower, nftId);
         // require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
-        uint256 nftValue = collateralManager.getNFTValue(borrower, collection, tokenId);
-        collateralManager.liquidateNFT(borrower, nftId);
+        uint256 nftValue = collateralManager.getNftValue(borrower, collection, tokenId);
+        // TODO does the trader do the listing??
+        collateralManager.liquidateNft(borrower, collection, tokenId);
 
         uint256 totalDebt = totalBorrowedUsers[borrower];
 
@@ -212,7 +214,7 @@ contract LendingPool is ReentrancyGuard {
         netBorrowedPool -= totalDebt;
         totalBorrowedPool -= totalDebt;
 
-        emit Liquidated(borrower, nftId, amountToPool);
+        emit Liquidated(borrower, tokenId, amountToPool);
     }
 
     // Retrieve user account data including LP and DB tokens
