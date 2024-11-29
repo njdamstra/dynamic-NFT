@@ -10,6 +10,8 @@ contract NftTrader {
     // Listing struct has the price and seller (collateralManager contract) of the nft to be liquidated
     struct Listing {
         address seller; // in the case of one llending pool, this will always be the same (CM)
+        address collection;
+        uint256 tokenId;
         uint256 basePrice; // first bid has to be at least this amount
         uint256 auctionStarted; // when listing was created
         uint256 auctionEnds; // how long auction will last
@@ -58,12 +60,13 @@ contract NftTrader {
         require(token.isApproved(collateralManager, address(this), tokenId), "[*ERROR*] Contract is not approved by collateral manager!"); // might delete this so that approval only happens when purchased
         // check for no redundant listings currently; 
         if (isListed(collection, tokenId)) {
+            // maybe have an update function that'll only update it's basePrice
             return;
         }
         // Add the listing
         uint256 timestamp = block.timestamp();
         uint256 auctionEnds = timestamp + duration;
-        listings[collection][tokenId] = Listing(collateralManager, basePrice, timestamp, auctionEnds, 0, address(0), !auction, originalOwner);
+        listings[collection][tokenId] = Listing(collateralManager, collection, tokenId, basePrice, timestamp, auctionEnds, 0, address(0), !auction, originalOwner);
 
         // create a listing event
         emit NFTListed(collection, tokenId, basePrice, collateralManager, auction, timestamp);
@@ -73,11 +76,21 @@ contract NftTrader {
     // (this shouldn't be called when some purchased the nft, this should only be called when the borrower wants to reedem there nft)
     function delist(address collection, uint256 tokenId) public onlyCollateralManager {
         // require(checkTokenId(collection, tokenId), "[*ERROR*] NFT is not listed!");
+        // maybe returns bool if it was sold. we don't have a data structure keeping track of if a NFT was sold...
         if (isListed(collection, tokenId)) {
             // Remove the listing
-            delete listings[collection][tokenId];
-            emit NFTDelisted(collection, tokenId);
+            Listing storage item = listings[collection][tokenId];
+            if (item.highestBidder != address(0)) {  // can't delist if someone already placed a bid on it!
+                endAuction(collection, tokenId);
+                return; // someone placed a bid on it --> true it's purchased and can't be delisted.
+            } else {
+                delete listings[collection][tokenId];
+                emit NFTDelisted(collection, tokenId);
+                return; // successfully delisted and no one placed a bid on it!
+            }
         }
+        return; // not listed thus no one purchased it bc otherwise CM wouldn't call delist
+        // TODO can't delist if auction has ended and has a highest bidder!!!
     }
 
     function placeBid(address collection, uint256 tokenId) external payable {
@@ -95,9 +108,11 @@ contract NftTrader {
         // Update the highest bid
         item.highestBid = msg.value;
         item.highestBidder = msg.sender;
+        // TODO: do we need to update listings map with new item or is it changed directly?
+        // listings[collection][tokenId] = item; // to update the listing or does storage item mean we can mutate 'item' without creating a new struct
     }
 
-    //TODO: liquidate at highest bid
+    // called by either the purchase function or the highest bidder.
     function endAuction(address collection, uint256 tokenId) public {
         // called only if auction duration has been completed.
         // if there is a bid, automatically transfer NFT to highest bidders address
@@ -125,7 +140,7 @@ contract NftTrader {
 
 
     // purchase an NFT (user purchases from CollateralManager) ??-F
-    function purchase(address collection, uint256 tokenId) public payable {
+    function purchase(address collection, uint256 tokenId) external payable {
         require(isListed(collection, tokenId), "NFT not listed");
         Listing memory item = listings[collection][tokenId];
         // require(item.price > 0, "[*ERROR*] NFT not listed for sale!");
@@ -176,32 +191,10 @@ contract NftTrader {
         return true;
     }
 
-    // currently not being used
-    // function isAuction(address collection, uint256 tokenId) public view returns (bool) { 
-    //     return !listings[collection][tokenId].buyNow;
+    // function notPurchased(address collection, uint256 tokenId) external returns (bool) {
+    //     Listing storage item = listings[collection][tokenId];
+    //     uint256 timeNow = block.timestamp;
+    //     if 
     // }
-
-    // // returns true if collection is already in collection list
-    // function checkCollection(address collection) private returns (bool) {
-    //     for (uint i = 0; i < numCollections; i++) {
-    //         if (collectionList[i] == collection) {
-    //             return true;
-    //         }
-    //     }
-    //     return false;
-    // }
-
-    // // returns true if token already is up for sale and listed
-    // function checkTokenId(address collection, uint256 tokenId) private returns (bool) {
-    //     if (!checkCollection(collection)) {
-    //         return false; // collection isn't added yet so token is definitely not up for sale
-    //     }
-    //     for (uint i = 1; i < tokenIdList[collection][0] + 1; i ++) { // i = 1 because first entry is always the length of the tokenIdList
-    //         if (tokenIdList[collection][i] == tokenId) {
-    //             return true;
-    //         }
-    //     }
-    //     return false;
-    }
 
 }

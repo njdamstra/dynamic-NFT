@@ -10,8 +10,8 @@ import {ICollateralManager} from "../interfaces/ICollateralManager.sol";
 
 
 contract LendingPool is ReentrancyGuard {
-    mapping(address => uint256) public netBorrowedUsers; // Tracks ETH (without interest) currently borrowed by users
-    mapping(address => uint256) public netSuppliedUsers; // Tracks ETH (without interest) supplied by users // do we need token???
+    mapping(address => uint256) public netBorrowedUsers; // Tracks ETH (without interest) currently borrowed by borrowers
+    mapping(address => uint256) public netSuppliedUsers; // Tracks ETH (without interest) supplied by lenders // do we need token???
     mapping(address => uint256) public totalBorrowedUsers; // Tracks ETH (with interest) currently borrowed by users
 
 
@@ -44,8 +44,10 @@ contract LendingPool is ReentrancyGuard {
         require(_lpTokenAddr != address(0) && _dbTokenAddr != address(0) && _collateralManagerAddr != address(0), "Invalid addresses");
 
         paused = false;
-        lpToken = _lpTokenAddr;
-        dbToken = _dbTokenAddr;
+        lpTokenAddr = _lpTokenAddr;
+        iLPToken = ILPToken(lpTokenAddr);
+        dbTokenAddr = _dbTokenAddr;
+        iDBToken = IDBToken(dpTokenAddr);
         collateralManagerAddr = _collateralManagerAddr;
         iCollateralManager = ICollateralManager(collateralManagerAddr);
     }
@@ -96,14 +98,14 @@ contract LendingPool is ReentrancyGuard {
         netSuppliedUsers[msg.sender] += amount;
 
         // Mint LP tokens proportional to the supplied amount
-        lpToken.mint(msg.sender, amount);
+        iLPToken.mint(msg.sender, amount);
         emit Supplied(msg.sender, amount);
     }
 
     // Allows users to withdraw ETH from the pool
     function withdraw(uint256 amount) external nonReentrant whenNotPaused {
         require(amount > 0, "[*ERROR*] Cannot withdraw zero ETH!");
-        uint256 userBalance = lpToken.balanceOf(msg.sender);
+        uint256 userBalance = iLPToken.balanceOf(msg.sender);
         require(userBalance >= amount, "[*ERROR*] Insufficient LP tokens!");
 
         // Update the pool balance
@@ -111,7 +113,7 @@ contract LendingPool is ReentrancyGuard {
         netSuppliedUsers[msg.sender] -= amount;
 
         // Burn the LP tokens
-        lpToken.burn(msg.sender, amount);
+        iLPToken.burn(msg.sender, amount);
 
         // Transfer the ETH to the user
         (bool success, ) = msg.sender.call{value: amount}("");
@@ -130,11 +132,11 @@ contract LendingPool is ReentrancyGuard {
 
         //TODO get the NFT value & ensure HF
         // transfer NFTs to collateral manager
-        bool success = collateralManager.transferCollateral(msg.sender, totalLoan, netBorrowedUsers[msg.sender]);
+        bool success = iCollateralManager.transferCollateral(msg.sender, totalLoan, netBorrowedUsers[msg.sender]);
         require(success, "unable to transfer collateral to collateral manager");
 
         // mint and give debt tokens to borrower
-        dbToken.mint(msg.sender, totalLoan);
+        iDBToken.mint(msg.sender, totalLoan);
 
         // send eth to borrower
         (bool success, ) = msg.sender.call{value: netLoan}("");
@@ -155,7 +157,7 @@ contract LendingPool is ReentrancyGuard {
         uint256 netDebt = netBorrowedUsers[msg.sender];
         require(netDebt > 0, "[*ERROR*] No debt to repay!");
         require(totalDebt > 0, "[*ERROR*] No debt to repay!");
-        uint256 userBalance = dbToken.balanceOf(msg.sender);
+        uint256 userBalance = iDBToken.balanceOf(msg.sender);
         require(userBalance >= amount, "[*ERROR*] Insufficient DB tokens!");
         uint256 interest = (netDebt * 10) / 100; // 10% interest
         uint256 totalDebt = netDebt + interest;
@@ -163,7 +165,7 @@ contract LendingPool is ReentrancyGuard {
         require(msg.value == totalDebt, "[*ERROR*] Incorrect repayment amount!");
 
         // Burn DB tokens from the borrower
-        dbToken.burn(msg.sender, totalDebt);
+        iDBToken.burn(msg.sender, totalDebt);
 
         poolBalance += totalDebt;
         netBorrowedPool -= netDebt;
@@ -173,16 +175,16 @@ contract LendingPool is ReentrancyGuard {
         totalBorrowedUsers[msg.sender] -= totalDebt;
 
         // Distribute interest proportionally as LP tokens or add to pool if no lenders
-        uint256 activeTokens = lpToken.getActiveTokens();
+        uint256 activeTokens = iLPToken.getActiveTokens();
         if (activeTokens > 0) {
             // Distribute interest proportionally among lenders
             for (uint256 i = 0; i < activeTokens; i++) {
-                address lender = lpToken.holderAt(i); // Assumes LPToken has a holder-tracking feature
-                uint256 lenderShare = (lpToken.balanceOf(lender) * interest) / activeTokens;
+                address lender = iLPToken.holderAt(i); // Assumes LPToken has a holder-tracking feature
+                uint256 lenderShare = (iLPToken.balanceOf(lender) * interest) / activeTokens;
                 //TODO ? do we need the token structure DBT?
                 uint256 before = netSuppliedUsers[lender]
                 uint256 after =
-                lpToken.mint(lender, lenderShare);
+                iLPToken.mint(lender, lenderShare);
             }
         } else {
             // If no lenders, add interest to the pool balance
@@ -197,16 +199,16 @@ contract LendingPool is ReentrancyGuard {
     function liquidate(address borrower, address collection, uint256 tokenId, uint256 amount) external onlyOwner {
         // uint256 healthFactor = collateralManager.getHealthFactor(borrower, nftId);
         // require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
-        uint256 nftValue = collateralManager.getNftValue(borrower, collection, tokenId);
+        uint256 nftValue = iCollateralManager.getNftValue(borrower, collection, tokenId);
         // TODO does the trader do the listing??
-        collateralManager.liquidateNft(borrower, collection, tokenId);
+        iCollateralManager.liquidateNft(borrower, collection, tokenId);
 
         uint256 totalDebt = totalBorrowedUsers[borrower];
 
         uint256 debtReduction = amount > totalDebt ? totalDebt : amount;
         uint256 remainingDebt = totalDebt > debtReduction ? totalDebt - debtReduction : 0;
 
-        dbToken.burn(borrower, debtReduction);
+        iDBToken.burn(borrower, debtReduction);
 
         netBorrowedUsers[borrower] = remainingDebt;
         totalBorrowedUsers[borrower] = remainingDebt;
@@ -216,12 +218,12 @@ contract LendingPool is ReentrancyGuard {
         uint256 profit = amount > totalDebt ? amount - totalDebt : 0;
 
         // Distribute profit as interest
-        uint256 activeTokens = lpToken.getActiveTokens()();
+        uint256 activeTokens = iLPToken.getActiveTokens()();
         if (activeTokens > 0 && profit > 0) {
             for (uint256 i = 0; i < activeTokens; i++) {
-                address lender = lpToken.holderAt(i); // Assumes LPToken has a holder-tracking feature
-                uint256 lenderShare = (lpToken.balanceOf(lender) * profit) / activeTokens;
-                lpToken.mint(lender, lenderShare);
+                address lender = iLPToken.holderAt(i); // Assumes iLPToken has a holder-tracking feature
+                uint256 lenderShare = (iLPToken.balanceOf(lender) * profit) / activeTokens;
+                iLPToken.mint(lender, lenderShare);
             }
         } else {
             poolBalance += profit; // If no lenders, add profit to pool balance
@@ -242,8 +244,8 @@ contract LendingPool is ReentrancyGuard {
     )
     {
         totalDebtETH = totalBorrowedUsers[user];
-        lpTokenBalance = lpToken.balanceOf(user);
-        dbTokenBalance = dbToken.balanceOf(user);
+        lpTokenBalance = iLPToken.balanceOf(user);
+        dbTokenBalance = iDBToken.balanceOf(user);
     }
 
 }

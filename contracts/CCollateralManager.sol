@@ -168,7 +168,7 @@ contract CollateralManager {
     }
 
     // TODO: redeem your NFT
-    function redeemCollateral(address collection, uint256 tokenId) public payable {
+    function redeemCollateral(address collection, uint256 tokenId) public {
         // only if hf allows for it
         // if loan amount is 0, we automatically transfer NFT back
     }
@@ -206,7 +206,8 @@ contract CollateralManager {
 
     // TODO: create a basePrice for the given NFT, probably take it's floor price and subtract it's proportion of the debt + interest
     function addTradeListing(address borrower, address collection, uint256 tokenId) external private {
-        uint256 basePrice = 10;
+        uint256 basePrice = getBasePrice(collection, tokenId);
+        // determine basePrice calculation.
         uint256 duration = 1000;
         iNftTrader.addListing(basePrice, collection, tokenId, true, duration, borrower);
 
@@ -219,6 +220,11 @@ contract CollateralManager {
 
         // emit NFTDeListed event
         emit NFTDeListed(borrower, collection, tokenId, block.timestamp());
+    }
+
+    // TODO assume hf is one, get proportion of nft to debt + interest
+    function getBasePrice(address collection, uint256 tokenId) public returns (uint256) {
+
     }
 
 }
