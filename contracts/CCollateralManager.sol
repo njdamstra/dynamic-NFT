@@ -143,12 +143,12 @@ contract CollateralManager {
     // Aggregate collateral by adding NFTs to a borrower's profile
     // automatically transfers collateral to CM even before initializing there loan
     // if added collateral boosts its health factor enough, deList collateral from NftTrader and mark NftProvided auctionable to false.
-    // TODO update pool
+
     function addCollateral(address collectionAddress, uint256 tokenId) public {
         require(isNftValid(msg.sender, collectionAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
 
         // uint256 nftValue = getNftValue(collectionAddress, tokenId);
-        CollateralProfile storage collateralProfile = borrowersCollateral[msg.sender];
+        CollateralProfile memory collateralProfile = borrowersCollateral[msg.sender];
 
         for (uint256 i = 0; i < collateralProfile.nftList.length; i++) {
             require(
@@ -156,12 +156,11 @@ contract CollateralManager {
                 "[*ERROR*] Duplicate NFT in collateral!"
             );
         }
-        IERC721 nftContract = IERC721(collectionAddress);
-        nftContract.transferFrom(msg.sender, address(this), tokenId);
-        collateralProfile.nftList.push(Nft(collectionAddress, tokenId, nftContract,false));
+        IERC721 nft = IERC721(collectionAddress);
+        nft.transferFrom(msg.sender, address(this), tokenId);
+        collateralProfile.nftList.push(Nft(collectionAddress, tokenId, nft,false));
         collateralProfile.nftListLength++;
-
-        nftContract.approve(nftTraderAddress, tokenId); // Approves NftTrader to transfer NFT on CM's behalf -N
+        nft.approve(nftTraderAddress, tokenId); // Approves NftTrader to transfer NFT on CM's behalf -N
 
         emit CollateralAdded(msg.sender, collectionAddress, tokenId);
     }
