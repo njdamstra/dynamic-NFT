@@ -57,15 +57,14 @@ contract CollateralManager {
 
     // Events
     event NFTListed(address indexed borrower, address indexed collection, uint256 tokenId, uint256 valueListing, uint256 timestamp);
-    event NFTDeListed(address indexed borrower, address indexed collection, uint256 tokenId, uint256 timestamp);
+    event NFTDeListed(address indexed collection, uint256 tokenId, uint256 timestamp);
     event CollateralAdded(address indexed borrower, address indexed collection, uint256 tokenId, uint256 value, uint256 timestamp);
     event Liquidated(address indexed borrower, address indexed collectionAddress, uint256 tokenId, uint256 liquidated, uint256 timestamp);
 
-    // TODO Check if NFT is valid and owned by the sender
     function isNftValid(address sender, address collection, uint256 tokenId) public view returns (bool) {
         IERC721 nft = IERC721(collection);
         if (nft.ownerOf(tokenId) != sender) return false;
-        return iNftTrader.checkContract(collection);
+        return true;
     }
 
     // Calculate the health factor for a user
@@ -102,7 +101,7 @@ contract CollateralManager {
                 Nft item = nftList[i];
                 if (item.isLiquidatable) {
                     nftList[i].isLiquidatable = false;
-                    deListTrade(borrower, item.collectionAddress, item.tokenId);
+                    delistTrade(item.collectionAddress, item.tokenId);
                 }
             }
             Nft[] emptyList;
@@ -215,17 +214,16 @@ contract CollateralManager {
         emit NFTListed(borrower, collection, tokenId, basePrice, block.timestamp());
     }
 
-
-    function deListTrade(address collection, uint256 tokenId) external private {
+    //TODO error?
+    function delistTrade(address collection, uint256 tokenId) external private {
         iNftTrader.delist(collection, tokenId);
-
         // emit NFTDeListed event
-        emit NFTDeListed(borrower, collection, tokenId, block.timestamp());
+        emit NFTDeListed(collection, tokenId, block.timestamp());
     }
 
     // TODO assume hf is one, get proportion of nft to debt + interest
     function getBasePrice(address collection, uint256 tokenId) public returns (uint256) {
-
+        return;
     }
 
 }
