@@ -4,8 +4,9 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol"; // added for security
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./CCollateralManager.sol";
-import "./CDBToken.sol";
-import "./CLPToken.sol";
+import {IDBToken} from "../interfaces/IDBToken.sol";
+import {ILPToken} from "../interfaces/ILPToken.sol";
+import {ICollateralManager} from "../interfaces/ICollateralManager.sol";
 
 
 contract LendingPool is ReentrancyGuard {
@@ -18,21 +19,36 @@ contract LendingPool is ReentrancyGuard {
     uint256 public totalBorrowedPool;    // Tracks ETH (with interest) borrowed from the pool
     uint256 public poolBalance;      // Tracks current ETH in the pool
 
-    LPToken public lpToken;          // Loan Pool Token
-    DBToken public dbToken;          // Debt Token
+    address public lpTokenAddr;
+    ILPToken public iLPToken;          // Loan Pool Token
+    address public dbTokenAddr;
+    IDBToken public iDBToken;          // Debt Token
 
-    CollateralManager public collateralManager; // Contract managing NFT collateral
+    LPToken public lpToken;
+    DBToken public dbToken;
+
+    address public collateralManagerAddr;
+    ICollateralManager public iCollateralManager; // Contract managing NFT collateral
 
     bool public paused = false; // pause contract
 
     address public owner;
 
-    constructor(address _collateralManager) {
-        paused = false;
+    constructor() {
         owner = msg.sender;
-        lpToken = new LPToken();
-        dbToken = new DBToken();
-        collateralManager = CollateralManager(_collateralManager);
+    }
+
+    // TODO: Logic behind interfaces for LP and DB Tokens
+    function initialize(address _lpTokenAddr, address _dbTokenAddr, address _collateralManagerAddr) external onlyOwner {
+        require(lpToken == address(0), "Already initialized");
+        require(_lpTokenAddr != address(0) && _dbTokenAddr != address(0) && _collateralManagerAddr != address(0), "Invalid addresses");
+
+        paused = false;
+        lpToken = _lpTokenAddr;
+        dbToken = _dbTokenAddr;
+        collateralManagerAddr = _collateralManagerAddr;
+        iCollateralManager = ICollateralManager(collateralManagerAddr);
+    }
     }
 
     modifier onlyOwner() {

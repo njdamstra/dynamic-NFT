@@ -21,9 +21,16 @@ contract NftValues {
     event NftPriceUpdated(address indexed collection, uint256 indexed tokenId, uint256 newNftPrice, uint256 timestamp);
     event CollectionAdded(address indexed collection, string name, uint256 timestamp);
 
-    constructor(address _owner) { //Is the owner not always CollateralManager? -F
-        owner = _owner;
+    constructor() { //Is the owner not always CollateralManager? -F
+        owner = msg.sender;
+    }
+
+    // Initialize function to set the CollateralManager address
+    function initialize(address _collateralManagerAddr) external {
+        require(owner == msg.sender, "Only the owner can call this function");
+        require(_collateralManagerAddr != address(0), "Invalid address");
         collectionsLength = 0;
+        owner = _collateralManagerAddr;
     }
 
     modifier onlyOwner() {

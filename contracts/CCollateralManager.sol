@@ -33,13 +33,21 @@ contract CollateralManager {
 
     mapping(uint256 => bool) public isBeingLiquidated; // Tracks NFTs currently in liquidation
 
-    constructor(address _nftTrader, address _nftValues) {
+    constructor() {
+        // unsure if pool will be deploying this contract or if we'll deploy it through the deploy script
         pool = msg.sender; // LendingPool is the owner
-        nftTraderAddress = _nftTrader; //TODO get Trader with fixed address since 1:N
+    }
+
+    // Initialize function to set dependencies
+    function initialize(address _pool, address _nftTrader, address _nftValues) external {
+        require(pool == address(0), "Already initialized");
+        require(_pool != address(0) && _nftTrader != address(0) && _nftValues != address(0), "Invalid addresses");
+
+        pool = _pool;
+        nftTraderAddress = _nftTrader;
         nftValuesAddress = _nftValues;
         iNftTrader = INftTrader(nftTraderAddress);
         iNftValues = INftValues(nftValuesAddress);
-
     }
 
     modifier onlyPool() {
@@ -48,9 +56,10 @@ contract CollateralManager {
     }
 
     // Events
-    event NFTListed(address indexed borrower, address indexed collection, uint256 tokenId, uint256 valueListing);
-    event CollateralAdded(address indexed borrower, address indexed collection, uint256 tokenId, uint256 value);
-    event Liquidated(address indexed borrower, address indexed collectionAddress, uint256 tokenId, uint256 liquidated);
+    event NFTListed(address indexed borrower, address indexed collection, uint256 tokenId, uint256 valueListing, uint256 timestamp);
+    event NFTDeListed(address indexed borrower, address indexed collection, uint256 tokenId, uint256 timestamp);
+    event CollateralAdded(address indexed borrower, address indexed collection, uint256 tokenId, uint256 value, uint256 timestamp);
+    event Liquidated(address indexed borrower, address indexed collectionAddress, uint256 tokenId, uint256 liquidated, uint256 timestamp);
 
     // TODO Check if NFT is valid and owned by the sender
     function isNftValid(address sender, address collection, uint256 tokenId) public view returns (bool) {
@@ -84,7 +93,7 @@ contract CollateralManager {
                 if (!item.isLiquidatable) {
                     addTradeListing(borrower, item.collectionAddress, item.tokenId);
                     nftList[i].isLiquidatable = true;
-                } 
+                }
             }
             liquidatableCollateral[borrower] = nftList;
         }
@@ -101,25 +110,13 @@ contract CollateralManager {
         }
     }
 
-    //TODO change pool
-    // function called by NftTrader when NFT gets bought by liquidator
-    // delete given NFT from borrowers CollateralProfile
-    // transfers NFT from CM to liquidator
-    // this function calls liquidate in LendPool
+    // This function is called only by the Pool after the Trader sold the NFT and called liquidate in the pool
     function liquidateNft(address borrower, address collectionAddress, uint256 tokenId, uint256 amount) public onlyPool {
-        // uint256 amount = msg.value;
-        // require(liquidator != address(0), "Invalid liquidator address");
-        // require(amount >= getNftListingPrice(collectionAddress, tokenId), "Insufficient Ether sent");
-
-        // IERC721 nftContract = IERC721(collectionAddress);
-        // address borrower = nftContract.ownerOf(tokenId);
-
         // 1. update borrowersCollateral
         _deleteNftFromCollateralProfile(borrower, collectionAddress, tokenId);
         // 2. update liquidatableCollateral
         updateLiquidatableCollateral(borrower);
-
-        // transfer NFT to liquidator
+        // 3. emit event to show this NFT was liquidated!
         emit Liquidated(borrower, collectionAddress, tokenId, amount);
     }
 
@@ -212,10 +209,16 @@ contract CollateralManager {
         uint256 basePrice = 10;
         uint256 duration = 1000;
         iNftTrader.addListing(basePrice, collection, tokenId, true, duration, borrower);
+
+        // emit NFTListed event
+        emit NFTListed(borrower, collection, tokenId, basePrice, block.timestamp());
     }
 
     function deListTrade(address borrower, address collection, uint256 tokenId) external private {
         iNftTrader.delist(collection, tokenId);
+
+        // emit NFTDeListed event
+        emit NFTDeListed(borrower, collection, tokenId, block.timestamp());
     }
 
 }

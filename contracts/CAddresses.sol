@@ -2,34 +2,39 @@
 pragma solidity ^0.8.0;
 
 contract Addresses {
-    event LendPoolUpdated(address indexed newAddress);
-    event CollateralManagerUpdated(address indexed newAddress);
-    event NftValuesUpdated(address indexed newAddress);
-    event NftTraderUpdated(address indexed newAddress);
-    event LPTokenUpdated(address indexed newAddress);
-    event DBTokenUpdated(address indexed newAddress);
+    address public owner;
 
-    function getLendPool() external view returns (address);
+    // Mapping to store contract names to their addresses
+    mapping(string => address) private addresses;
 
-    function setLendPool(address addr) external;
+    event AddressUpdated(string indexed name, address indexed newAddress);
 
-    function getCollateralManager() external view returns (address);
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only the owner can call this function");
+        _;
+    }
 
-    function setCollateralManager(address addr) external;
+    constructor() {
+        owner = msg.sender; // The deployer is the owner
+    }
 
-    function getNftValues() external view returns (address);
+    // Function to set an address for a given contract name
+    function setAddress(string memory name, address newAddress) external onlyOwner {
+        require(newAddress != address(0), "Invalid address");
+        addresses[name] = newAddress;
+        emit AddressUpdated(name, newAddress);
+    }
 
-    function setNftValues(address addr) external;
+    // Function to get an address for a given contract name
+    function getAddress(string memory name) external view returns (address) {
+        address addr = addresses[name];
+        require(addr != address(0), "Address not found");
+        return addr;
+    }
 
-    function getNftTrader() external view returns (address);
-
-    function setNftTrader(address addr) external;
-
-    function getLPToken() external view returns (address);
-
-    function setLPToken(address addr) external;
-
-    function getDBToken() external view returns (address);
-
-    function setDBToken(address addr) external;
+    // Function to transfer ownership if needed
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "Invalid address");
+        owner = newOwner;
+    }
 }

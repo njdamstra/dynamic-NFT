@@ -25,10 +25,16 @@ contract NftTrader {
     uint public numCollections;
     ILendingPool public IPool;
 
-    constructor(address _collateralManager, address _pool) {
-        collateralManager = _collateralManager; // caller of contract is the owner of the NFT
-        // must make this the address of the collateralManager
-        pool = _pool; // where we transfer money to
+    constructor() {
+    }
+
+    // Initialize function to set dependencies
+    function initialize(address _collateralManagerAddr, address _pool) external {
+        require(collateralManagerAddr == address(0), "Already initialized");
+        require(_collateralManagerAddr != address(0) && _pool != address(0), "Invalid addresses");
+
+        collateralManagerAddr = _collateralManagerAddr;
+        pool = _pool;
         numCollections = 0;
         IPool = ILendingPool(pool);
     }
