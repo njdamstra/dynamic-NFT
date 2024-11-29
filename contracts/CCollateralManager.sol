@@ -215,6 +215,7 @@ contract CollateralManager {
         emit NFTListed(borrower, collection, tokenId, basePrice, block.timestamp());
     }
 
+
     function deListTrade(address collection, uint256 tokenId) external private {
         iNftTrader.delist(collection, tokenId);
 
