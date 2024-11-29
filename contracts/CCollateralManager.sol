@@ -136,6 +136,8 @@ contract CollateralManager {
                 collateralProfile.nftList[i] = collateralProfile.nftList[length - 1];
                 collateralProfile.nftList.pop(); // Remove the last element
                 collateralProfile.nftListLength--; // Decrement the count
+                // deregister nft from nft's NftValues keeps track of.
+                deregisterNft(collectionAddress, tokenId);
                 break;
             }
         }
@@ -145,12 +147,13 @@ contract CollateralManager {
     // automatically transfers collateral to CM even before initializing there loan
     // if added collateral boosts its health factor enough, deList collateral from NftTrader and mark NftProvided auctionable to false.
     // TODO update pool
+    // TODO add collateral to LiquidableCollateral map.
     function addCollateral(address collectionAddress, uint256 tokenId) public {
         require(isNftValid(msg.sender, collectionAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
 
         // uint256 nftValue = getNftValue(collectionAddress, tokenId);
+        // what if this doesn't exist yet? i.e first nft borrower adds to his CP
         CollateralProfile storage collateralProfile = borrowersCollateral[msg.sender];
-
         for (uint256 i = 0; i < collateralProfile.nftList.length; i++) {
             require(
                 !(collateralProfile.nftList[i].collectionAddress == collectionAddress && collateralProfile.nftList[i].tokenId == tokenId),
@@ -161,6 +164,7 @@ contract CollateralManager {
         nftContract.transferFrom(msg.sender, address(this), tokenId);
         collateralProfile.nftList.push(Nft(collectionAddress, tokenId, nftContract,false));
         collateralProfile.nftListLength++;
+        registerNft(collectionAddress, tokenId); // sends to NftValues to add to list of NFTs it keeps track of
 
         nftContract.approve(nftTraderAddress, tokenId); // Approves NftTrader to transfer NFT on CM's behalf -N
 
@@ -224,7 +228,14 @@ contract CollateralManager {
 
     // TODO assume hf is one, get proportion of nft to debt + interest
     function getBasePrice(address collection, uint256 tokenId) public returns (uint256) {
+    }
 
+    // NATE TODO:
+    function registerNft(address collection, uint256 tokenId) private {
+    }
+
+    // NATE TODO:
+    function deregisterNft(address collection, uint256 tokenId) private {
     }
 
 }
