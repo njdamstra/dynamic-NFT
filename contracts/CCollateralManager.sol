@@ -150,9 +150,9 @@ contract CollateralManager {
     // automatically transfers collateral to CM even before initializing there loan
     // if added collateral boosts its health factor enough, deList collateral from NftTrader and mark NftProvided auctionable to false.
 
-    // TODO update pool
     // TODO add collateral to LiquidableCollateral map.
-
+    // actually only if HF < 1.2 which happens through update LiquidatableCollateral(), the borrowersCollateral
+    // is updated through the CollateralProfile which gets adds the NFT to the NFTList, i commented it in the code -F
     function addCollateral(address collectionAddress, uint256 tokenId) public {
         require(isNftValid(msg.sender, collectionAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
 
@@ -167,16 +167,17 @@ contract CollateralManager {
                 "[*ERROR*] Duplicate NFT in collateral!"
             );
         }
+        // here it is added to borrowersCollateral through the collateral profile -F
         IERC721 nftContract = IERC721(collectionAddress);
         nftContract.transferFrom(msg.sender, address(this), tokenId);
         collateralProfile.nftList.push(Nft(collectionAddress, tokenId, nftContract,false));
         collateralProfile.nftListLength++;
 
-        registerNft(collectionAddress, tokenId); // sends to NftValues to add to list of NFTs it keeps track of
+        // sends to NftValues to add to list of NFTs it keeps track of
+        registerNft(collectionAddress, tokenId);
 
-        //542cf939122c28e71674507c14f3acedc0b2f6dd
-        nftContract.approve(nftTraderAddress, tokenId); // Approves NftTrader to transfer NFT on CM's behalf -N
-
+        // Approves NftTrader to transfer NFT on CM's behalf -N
+        nftContract.approve(nftTraderAddress, tokenId);
         emit CollateralAdded(msg.sender, collectionAddress, tokenId);
     }
 
@@ -270,7 +271,7 @@ contract CollateralManager {
     // TODO assume hf is one, get proportion of nft to debt + interest
     function getBasePrice(address collection, uint256 tokenId) public returns (uint256) {
         uint256 floorPrice = getNftValue(collection,tokenId);
-        return (floorPrice * 97) / 100;
+        return (floorPrice * 95) / 100;
 }
 
     // NATE TODO:
@@ -281,6 +282,5 @@ contract CollateralManager {
     function deregisterNft(address collection, uint256 tokenId) private {
         return;
     }
-    //542cf939122c28e71674507c14f3acedc0b2f6dd
 
 }
