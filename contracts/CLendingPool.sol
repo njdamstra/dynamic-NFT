@@ -11,8 +11,10 @@ import {ICollateralManager} from "../interfaces/ICollateralManager.sol";
 
 contract LendingPool is ReentrancyGuard {
     mapping(address => uint256) public netBorrowedUsers; // Tracks ETH (without interest) currently borrowed by borrowers
-    mapping(address => uint256) public netSuppliedUsers; // Tracks ETH (without interest) supplied by lenders // do we need token???
     mapping(address => uint256) public totalBorrowedUsers; // Tracks ETH (with interest) currently borrowed by users
+
+    mapping(address => uint256) public netSuppliedUsers; // Tracks ETH (without interest) supplied by lenders
+    mapping(address => uint256) public totalSuppliedUsers; // Tracks ETH (without interest) supplied by lenders
 
 
     uint256 public netBorrowedPool;    // Tracks ETH (without interest) borrowed from the pool
@@ -45,12 +47,11 @@ contract LendingPool is ReentrancyGuard {
 
         paused = false;
         lpTokenAddr = _lpTokenAddr;
-        iLPToken = ILPToken(lpTokenAddr);
+        //iLPToken = ILPToken(lpTokenAddr);
         dbTokenAddr = _dbTokenAddr;
-        iDBToken = IDBToken(dpTokenAddr);
+        //iDBToken = IDBToken(dpTokenAddr);
         collateralManagerAddr = _collateralManagerAddr;
         iCollateralManager = ICollateralManager(collateralManagerAddr);
-    }
     }
 
     modifier onlyOwner() {
@@ -124,6 +125,7 @@ contract LendingPool is ReentrancyGuard {
     // Allows users to borrow ETH from the pool using NFT collateral
     function borrow(uint256 amount) external nonReentrant whenNotPaused {
         require(netLoan <= poolBalance, "[*ERROR*] Insufficient pool liquidity!");
+        //TODO check hf for Loan and Existing Collateral
 
         // calculate interest as 10% of borrowed amount
         uint256 netLoan = amount;
@@ -131,9 +133,7 @@ contract LendingPool is ReentrancyGuard {
         uint256 totalLoan = amount + interest;
 
         //TODO get the NFT value & ensure HF
-        // transfer NFTs to collateral manager
-        bool success = iCollateralManager.transferCollateral(msg.sender, totalLoan, netBorrowedUsers[msg.sender]);
-        require(success, "unable to transfer collateral to collateral manager");
+
 
         // mint and give debt tokens to borrower
         iDBToken.mint(msg.sender, totalLoan);

@@ -150,7 +150,7 @@ contract CollateralManager {
     // automatically transfers collateral to CM even before initializing there loan
     // if added collateral boosts its health factor enough, deList collateral from NftTrader and mark NftProvided auctionable to false.
 
-    // TODO add collateral to LiquidableCollateral map.
+    // TODO add collateral to LiquidableCollateral map. -DONE-
     // actually only if HF < 1.2 which happens through update LiquidatableCollateral(), the borrowersCollateral
     // is updated through the CollateralProfile which gets adds the NFT to the NFTList, i commented it in the code -F
     function addCollateral(address collectionAddress, uint256 tokenId) public {
@@ -221,12 +221,12 @@ contract CollateralManager {
         return collateralProfile.nftList;
     }
 
-    //TODO get the actual value from oracle nftvalue
+    //NATE TODO get the actual value from oracle nftvalue
     function getNftValue(address collectionAddress, uint256 tokenId) private returns (uint256) {
         return iNftValues.getTokenIdPrice(collectionAddress, tokenId);
     }
 
-    //TODO get the actual listing price for nft from nfttrader
+    //NATE TODO get the actual listing price for nft from nfttrader
     function getNftListingPrice(address collectionAddress, uint256 tokenId) private returns (uint256) {
         return;
     }
