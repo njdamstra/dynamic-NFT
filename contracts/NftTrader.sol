@@ -26,22 +26,36 @@ contract NftTrader {
     address public pool;
     uint public numCollections;
     ILendingPool public IPool;
+    address public owner;
+    address public portal;
 
     constructor() {
+        owner = msg.sender;
     }
 
     // Initialize function to set dependencies
-    function initialize(address _collateralManagerAddr, address _pool) external {
+    function initialize(address _collateralManagerAddr, address _pool, address _portal) external onlyOwner {
         require(collateralManagerAddr == address(0), "Already initialized");
         require(_collateralManagerAddr != address(0) && _pool != address(0), "Invalid addresses");
 
         collateralManagerAddr = _collateralManagerAddr;
         pool = _pool;
         IPool = ILendingPool(pool);
+        portal = _portal;
     }
 
     modifier onlyCollateralManager() {
         require(msg.sender == collateralManager, "[*ERROR*] Only the collateralManager can call this function!");
+        _;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "[*ERROR*] Only the collateralManager can call this function!");
+        _;
+    }
+
+    modifier onlyPortal() {
+        require(msg.sender == portal, "[*ERROR*] Only the collateralManager can call this function!");
         _;
     }
 
@@ -92,7 +106,7 @@ contract NftTrader {
         // TODO can't delist if auction has ended and has a highest bidder!!!
     }
 
-    function placeBid(address collection, uint256 tokenId) external payable {
+    function placeBid(address bidder, address collection, uint256 tokenId) external payable onlyPortal {
         require(isListed(collection, tokenId), "token not listed");
         Listing storage item = listings[collection][tokenId];
         require(item.auctionEnds > block.timestamp, "Auction has ended");
@@ -106,7 +120,7 @@ contract NftTrader {
 
         // Update the highest bid
         item.highestBid = msg.value;
-        item.highestBidder = msg.sender;
+        item.highestBidder = bidder;
         // TODO: do we need to update listings map with new item or is it changed directly?
         // listings[collection][tokenId] = item; // to update the listing or does storage item mean we can mutate 'item' without creating a new struct
     }
@@ -139,7 +153,7 @@ contract NftTrader {
 
 
     // purchase an NFT (user purchases from CollateralManager) ??-F
-    function purchase(address collection, uint256 tokenId) external payable {
+    function purchase(address buyer, address collection, uint256 tokenId) external payable onlyPortal {
         require(isListed(collection, tokenId), "NFT not listed");
         Listing memory item = listings[collection][tokenId];
         // require(item.price > 0, "[*ERROR*] NFT not listed for sale!");
@@ -150,7 +164,7 @@ contract NftTrader {
 
         // Update balances and transfer NFT
         IERC721 token = IERC721(collection);
-        token.safeTransferFrom(item.seller, msg.sender, tokenId);
+        token.safeTransferFrom(item.seller, buyer, tokenId);
         // send funds back to the pool
 
         (bool success, ) = pool.call{value: msg.value}("");
@@ -159,7 +173,7 @@ contract NftTrader {
         IPool(pool).liquidate(item.originalOwner, collection, tokenId, amount);
         // Remove the listing
         delete listings[collection][tokenId];
-        emit NFTPurchased(collection, tokenId, item.price, msg.sender);
+        emit NFTPurchased(collection, tokenId, item.price, buyer);
     }
 
     // Withdraw funds NOT NEEDED

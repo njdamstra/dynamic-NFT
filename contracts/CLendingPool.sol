@@ -111,11 +111,11 @@ contract LendingPool is ReentrancyGuard {
 
         // Update the pool balance
         poolBalance += amount;
-        netSuppliedUsers[msg.sender] += amount;
+        netSuppliedUsers[lender] += amount;
 
         // Mint LP tokens proportional to the supplied amount
-        iLPToken.mint(msg.sender, amount);
-        emit Supplied(msg.sender, amount);
+        iLPToken.mint(lender, amount);
+        emit Supplied(lender, amount);
     }
 
     // Allows users to withdraw ETH from the pool
@@ -132,7 +132,7 @@ contract LendingPool is ReentrancyGuard {
         iLPToken.burn(lender, amount);
 
         // Transfer the ETH to the user
-        (bool success, ) = msg.sender.call{value: amount}("");
+        (bool success, ) = lender.call{value: amount}("");
         require(success, "[*ERROR*] Transfer failed!");
         emit Withdrawn(lender, amount);
     }
@@ -154,7 +154,7 @@ contract LendingPool is ReentrancyGuard {
         iDBToken.mint(borrower, totalLoan);
 
         // send eth to borrower
-        (bool success, ) = msg.sender.call{value: netLoan}("");
+        (bool success, ) = borrower.call{value: netLoan}("");
         require(success, "[*ERROR*] Transfer of debt tokens failed!");
 
         //update state of lend pool
@@ -205,7 +205,7 @@ contract LendingPool is ReentrancyGuard {
             // If no lenders, add interest to the pool balance
             poolBalance += interest;
         }
-        emit Repaid(msg.sender, amount);
+        emit Repaid(borrower, amount);
     }
 
     // Liquidates an NFT if the health factor drops below 1.2
@@ -214,7 +214,7 @@ contract LendingPool is ReentrancyGuard {
     function liquidate(address borrower, address collection, uint256 tokenId, uint256 amount) external onlyTrader {
         // uint256 healthFactor = collateralManager.getHealthFactor(borrower, nftId);
         // require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
-        uint256 nftValue = iCollateralManager.getNftValue(borrower, collection, tokenId);
+        uint256 nftValue = iCollateralManager.getNftValue(collection);
         // TODO does the trader do the listing??
         iCollateralManager.liquidateNft(borrower, collection, tokenId);
 
