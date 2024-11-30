@@ -223,7 +223,7 @@ contract CollateralManager {
     //     return iNftValues.getPrice(collection, tokenId);
     // }
 
-    //TODO get the actual listing price for nft from nfttrader
+    //TODO NATE get the actual listing price for nft from nfttrader
     function getNftListingPrice(address collectionAddress, uint256 tokenId) private returns (uint256) {
         return;
     }
@@ -248,7 +248,6 @@ contract CollateralManager {
         return getNftListValue(borrower);
     }
 
-    // TODO: create a basePrice for the given NFT, probably take it's floor price and subtract it's proportion of the debt + interest
     function addTradeListing(address borrower, address collection, uint256 tokenId) external private {
         uint256 basePrice = getBasePrice(collection, tokenId);
         // determine basePrice calculation.
@@ -259,14 +258,13 @@ contract CollateralManager {
         emit NFTListed(borrower, collection, tokenId, basePrice, block.timestamp());
     }
 
-    //TODO error?
+    //TODO error is interface
     function delistTrade(address collection, uint256 tokenId) external private {
         iNftTrader.delist(collection, tokenId);
         // emit NFTDeListed event
         emit NFTDeListed(collection, tokenId, block.timestamp());
     }
 
-    // TODO assume hf is one, get proportion of nft to debt + interest
     function getBasePrice(address collection, uint256 tokenId) public returns (uint256) {
         uint256 floorprice = getNftValue(collection);
         return (floorprice * 95) / 100;
