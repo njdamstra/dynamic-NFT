@@ -265,7 +265,6 @@ contract CollateralManager {
         emit NFTDeListed(collection, tokenId, block.timestamp());
     }
 
-    // TODO assume hf is one, get proportion of nft to debt + interest
     function getBasePrice(address collection, uint256 tokenId) public returns (uint256) {
         uint256 floorprice = getNftValue(collection, tokenId);
         return (floorprice * 95) / 100;
