@@ -175,21 +175,10 @@ contract CollateralManager {
         require(isNftValid(borrower,collection,tokenId), "[*ERROR* Nft not valid]");
         require(healthFactor > 150,"[*ERROR*] Health Factor has to be above 1.5 to redeem collateral!");
         Nft[] nftList = getNftList(borrower);
-
-    }
-
-    function sortNftListValDesc(Nft[] memory nftList) private returns (Nft[]) {
-        for (uint256 i = 0; i < nftList.length; i++) {
-            for (uint256 j = i + 1; j < nftList.length; j++) {
-                if (getNftValue(nftList[i]) < getNftValue(nftList[j])) {
-                    // Swap nfts[i] and nfts[j]
-                    Nft memory temp = nftList[i];
-                    nftList[i] = nftList[j];
-                    nftList[j] = temp;
-                }
-            }
-        }
-        return nftList;
+        nftList.pop(nft);
+        uint256 newCollateralValue = getListValue(borrower, nftList);
+        uint newHealthFactor = calculateHealthFactor(borrower,newCollateralValue);
+        require(healthFactor > 120,"[*ERROR*] Health Factor has to be above 1.2!");
     }
 
     // Get the total value of all NFTs in a borrower's collateral profile
@@ -201,6 +190,10 @@ contract CollateralManager {
     //TODO get the actual value from oracle nftvalue
     function getNftValue(address collectionAddress, uint256 tokenId) private returns (uint256) {
         return iNftValues.getTokenIdPrice(collectionAddress, tokenId);
+    }
+
+    function getNft(address collectionAddress, uint256 tokenId) private returns (Nft){
+        return;
     }
 
     //TODO get the actual value from oracle nftvalue
@@ -215,6 +208,10 @@ contract CollateralManager {
 
     function getNftListValue(address borrower) private returns (uint256) {
         Nft[] memory nftList = getNftList(borrower);
+        return getListValue(borrower, nftList);
+    }
+
+    function getListValue(address borrower, Nft[] memory nftList) private returns (uint256) {
         uint256 result = 0;
         for (uint256 i = 0; i < nftList.length; i++) {
             address collectionAddress = nftList[i].collectionAddress;
@@ -223,6 +220,7 @@ contract CollateralManager {
         }
         return result;
     }
+
 
     function getCollateralValue(address borrower) public returns (uint256) {
         return getNftListValue(borrower);
