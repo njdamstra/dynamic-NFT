@@ -150,7 +150,6 @@ contract CollateralManager {
     // automatically transfers collateral to CM even before initializing there loan
     // if added collateral boosts its health factor enough, deList collateral from NftTrader and mark NftProvided auctionable to false.
     // TODO update pool
-    // TODO add collateral to LiquidableCollateral map.
     function addCollateral(address collectionAddress, uint256 tokenId) public {
         require(isNftValid(msg.sender, collectionAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
 
@@ -220,8 +219,8 @@ contract CollateralManager {
     }
 
     //TODO get the actual value from oracle nftvalue
-    function getNftValue(Nft nft) private returns (uint256) {
-        return iNftValues.getTokenIdPrice(nft.collectionAddress, nft.tokenId);
+    function getNftValue(address collection, uint256 tokenId) private returns (uint256) {
+        return iNftValues.getTokenIdPrice(collection, tokenId);
     }
 
     //TODO get the actual listing price for nft from nfttrader
@@ -269,6 +268,8 @@ contract CollateralManager {
 
     // TODO assume hf is one, get proportion of nft to debt + interest
     function getBasePrice(address collection, uint256 tokenId) public returns (uint256) {
+        uint256 floorprice = getNftValue(collection, tokenId);
+        return (floorprice * 95) / 100;
     }
 
     // NATE TODO:
