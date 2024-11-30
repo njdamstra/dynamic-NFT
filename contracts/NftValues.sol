@@ -40,7 +40,6 @@ contract NftValues {
     function initialize(address _collateralManagerAddr) external {
         require(owner == msg.sender, "Only the owner can call this function");
         require(_collateralManagerAddr != address(0), "Invalid address");
-        collectionsLength = 0;
         owner = _collateralManagerAddr;
     }
 

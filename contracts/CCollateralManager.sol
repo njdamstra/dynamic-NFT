@@ -217,8 +217,6 @@ contract CollateralManager {
     function getNftValue(address collectionAddress) private returns (uint256) {
         return iNftValues.getFloorPrice(collectionAddress);
     }
-
-    // //TODO get the actual value from oracle nftvalue
     // function getNftValue(address collection, uint256 tokenId) private returns (uint256) {
     //     return iNftValues.getPrice(collection, tokenId);
     // }

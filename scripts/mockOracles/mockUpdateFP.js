@@ -1,19 +1,22 @@
 require("dotenv").config();
 const { ethers } = require("hardhat");
 const deployedAddresses = require("./deployedAddresses.json");
+const wallets = require("./signers.json"); // Load named wallets from signers.json
+
+
 
 // Load environment variables
-const LOCAL_NODE_URL = process.env.LOCAL_NODE_URL || "http://127.0.0.1:8545";
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
+const CONTRACT_ADDRESS = deployedAddresses.NftValues;
+const nftValuesABI = require("../artifacts/contracts/NftValues.sol/NftValues.json").abi;
 
 // Setup provider and signer
-const provider = new ethers.JsonRpcProvider(LOCAL_NODE_URL);
-const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+const provider = ethers.provider; // Use Hardhat's local provider
+
+const deployerWallet = new ethers.Wallet(wallets.find(w => w.name === "deployer").privateKey, provider);
 
 // Load the contract ABI from Hardhat artifacts
-const nftValuesABI = require("../artifacts/contracts/NftValues.sol/NftValues.json").abi;
-const contract = new ethers.Contract(CONTRACT_ADDRESS, nftValuesABI, wallet);
+
+const contract = new ethers.Contract(CONTRACT_ADDRESS, nftValuesABI, deloyerWallet);
 
 // Mock function to generate or fetch floor price
 async function fetchMockFloorPrice(collectionAddr) {

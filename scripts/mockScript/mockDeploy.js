@@ -22,6 +22,14 @@ async function main() {
     fs.writeFileSync(signersPath, JSON.stringify(signerData, null, 2));
     console.log(`Signers saved to ${signersPath}`);
 
+    // Load named wallets
+    const wallets = signerData.reduce((acc, signer) => {
+        acc[signer.name] = new ethers.Wallet(signer.privateKey, ethers.provider);
+        return acc;
+    }, {});
+
+    const deployer = wallets["deployer"];
+
     console.log("Deploying contracts with:", deployer.address);
 
     // Deploy GoodNft (Mock NFT contract)

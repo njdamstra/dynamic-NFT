@@ -1,36 +1,39 @@
 require("dotenv").config();
-const hre = require("hardhat");
-const { ethers } = require("ethers");
+const { loadWallets } = require("./loadWallets");
+const deployedAddresses = require("./deployedAddresses.json");
+const { ethers } = require("hardhat");
 
-const LOCAL_NODE_URL = process.env.LOCAL_NODE_URL || "http://127.0.0.1:8545";
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
 
-const provider = new ethers.JsonRpcProvider(LOCAL_NODE_URL);
-const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+// Load wallets and provider
+const wallets = loadWallets();
+const deployer = wallets["deployer"]; // Use deployer wallet for updates
+const provider = ethers.provider;
 
+// Load contract ABI and address dynamically
 const nftValuesABI = require("../artifacts/contracts/NftValues.sol/NftValues.json").abi;
+const nftValuesAddress = deployedAddresses.NftValues;
 
 // Create contract instance
-const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
-const floorPrices = [10, 5, 8, 15, 20, 30, 1, 3];
-index = 0;
+const nftValuesContract = new ethers.Contract(nftValuesAddress, nftValuesABI, deployer);
 
-// Mock function to generate or fetch floor price
+// Mock floor prices for testing
+const floorPrices = [10, 5, 8, 15, 20, 30, 1, 3];
+let index = 0;
+
+// Mock function to fetch or generate a floor price
 async function fetchMockFloorPrice(collectionAddr) {
-    // Simulate a random floor price in the range 1-10 ETH
-    // const floorPrice = floorPrices[index];
-    // index ++;
-    const floorPrice = Math.floor(Math.random() * 10) + 1; // Random integer between 1 and 10
+    // Optionally use pre-defined or random floor prices
+    const floorPrice = floorPrices[index % floorPrices.length]; // Cycles through the mock prices
+    index++;
     console.log(`Mocked floor price for ${collectionAddr}: ${floorPrice} ETH`);
     return ethers.parseEther(floorPrice.toString()); // Convert to WEI
 }
 
-// Listen for FloorPriceRequest events and respond
+// Listen for FloorPriceRequest events and handle them
 async function listenForRequests() {
-    console.log("Listening for FloorPriceRequest events...");
+    console.log("Listening for RequestFloorPrice events...");
 
-    contract.on("RequestFloorPrice", async (collectionAddr) => {
+    nftValuesContract.on("RequestFloorPrice", async (collectionAddr) => {
         console.log(`Received RequestFloorPrice for Collection: ${collectionAddr}`);
 
         // Fetch the mock floor price
@@ -38,7 +41,7 @@ async function listenForRequests() {
 
         // Update the floor price in the contract
         try {
-            const tx = await contract.updateFloorPrice(collectionAddr, tokenId, floorPrice);
+            const tx = await nftValuesContract.updateFloorPrice(collectionAddr, floorPrice);
             console.log(`Floor price updated successfully! Transaction Hash: ${tx.hash}`);
         } catch (error) {
             console.error("Error updating floor price:", error.message);

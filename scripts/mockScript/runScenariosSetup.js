@@ -40,6 +40,15 @@ async function main() {
     await GoodNft.connect(deployer).mint(borrower1.address);
     await GoodNft.connect(deployer).mint(borrower2.address);
     console.log(`Minted NFTs for borrower1 (${borrower1.address}) and borrower2 (${borrower2.address}).`);
+
+    // Example: calling oracle to update floor price
+    console.log("Updating floor prices using mockUpdateFP.js...");
+    try {
+        execSync("node mockScripts/mockUpdateFP.js", { stdio: "inherit" });
+        console.log("Floor prices updated successfully!");
+    } catch (error) {
+        console.error("Error calling mockUpdateFP.js:", error.message);
+    }
 }
 
 main()
