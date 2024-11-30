@@ -24,7 +24,8 @@ contract CollateralManager {
         IERC721 nftContract;
         bool isLiquidatable; // if NFT is currently being auctioned off or still hasn't been bought by liquidator
     }
-
+    
+    address public owner;
     address public pool;
     address public nftTraderAddress;
     address public nftValuesAddress;
@@ -36,11 +37,11 @@ contract CollateralManager {
 
     constructor() {
         // unsure if pool will be deploying this contract or if we'll deploy it through the deploy script
-        pool = msg.sender; // LendingPool is the owner
+        owner = msg.sender; // LendingPool is the owner
     }
 
     // Initialize function to set dependencies
-    function initialize(address _pool, address _nftTrader, address _nftValues, address _portal) external {
+    function initialize(address _pool, address _nftTrader, address _nftValues, address _portal) external onlyOwner {
         require(pool == address(0), "Already initialized");
         require(_pool != address(0) && _nftTrader != address(0) && _nftValues != address(0), "Invalid addresses");
         portal = _portal;
@@ -58,6 +59,11 @@ contract CollateralManager {
 
     modifier onlyPortal() {
         require(msg.sender == portal, "[*ERROR*] Only the pool can call this function!");
+        _;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "[*ERROR*] Not the contract owner!");
         _;
     }
     // Events

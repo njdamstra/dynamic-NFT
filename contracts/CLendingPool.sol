@@ -35,13 +35,15 @@ contract LendingPool is ReentrancyGuard {
     bool public paused = false; // pause contract
 
     address public owner;
+    address public portal;
+    address public trader;
 
     constructor() {
         owner = msg.sender;
     }
 
     // TODO: Logic behind interfaces for LP and DB Tokens
-    function initialize(address _lpTokenAddr, address _dbTokenAddr, address _collateralManagerAddr) external onlyOwner {
+    function initialize(address _lpTokenAddr, address _dbTokenAddr, address _collateralManagerAddr, address _portal, address _trader) external onlyOwner {
         require(lpToken == address(0), "Already initialized");
         require(_lpTokenAddr != address(0) && _dbTokenAddr != address(0) && _collateralManagerAddr != address(0), "Invalid addresses");
 
@@ -52,10 +54,23 @@ contract LendingPool is ReentrancyGuard {
         //iDBToken = IDBToken(dpTokenAddr);
         collateralManagerAddr = _collateralManagerAddr;
         iCollateralManager = ICollateralManager(collateralManagerAddr);
+
+        portal = _portal;
+        trader = _trader;
     }
 
     modifier onlyOwner() {
         require(msg.sender == owner, "[*ERROR*] Not the contract owner!");
+        _;
+    }
+
+    modifier onlyPortal() {
+        require(msg.sender == portal, "[*ERROR*] Not the contract owner!");
+        _;
+    }
+
+    modifier onlyTrader() {
+        require(msg.sender == trader, "[*ERROR*] Not the contract owner!");
         _;
     }
 
@@ -90,7 +105,7 @@ contract LendingPool is ReentrancyGuard {
     }
 
     // Allows users to supply ETH to the pool
-    function supply(uint256 amount) external payable {
+    function supply(address lender, uint256 amount) external payable onlyPortal {
         require(msg.value == amount, "[*ERROR*] Incorrect amount of ETH supplied!");
         require(amount > 0, "[*ERROR*] Cannot supply zero ETH!");
 
@@ -104,26 +119,26 @@ contract LendingPool is ReentrancyGuard {
     }
 
     // Allows users to withdraw ETH from the pool
-    function withdraw(uint256 amount) external nonReentrant whenNotPaused {
+    function withdraw(address lender, uint256 amount) external nonReentrant whenNotPaused onlyPortal {
         require(amount > 0, "[*ERROR*] Cannot withdraw zero ETH!");
-        uint256 userBalance = iLPToken.balanceOf(msg.sender);
+        uint256 userBalance = iLPToken.balanceOf(lender);
         require(userBalance >= amount, "[*ERROR*] Insufficient LP tokens!");
 
         // Update the pool balance
         poolBalance -= amount;
-        netSuppliedUsers[msg.sender] -= amount;
+        netSuppliedUsers[lender] -= amount;
 
         // Burn the LP tokens
-        iLPToken.burn(msg.sender, amount);
+        iLPToken.burn(lender, amount);
 
         // Transfer the ETH to the user
         (bool success, ) = msg.sender.call{value: amount}("");
         require(success, "[*ERROR*] Transfer failed!");
-        emit Withdrawn(msg.sender, amount);
+        emit Withdrawn(lender, amount);
     }
 
     // Allows users to borrow ETH from the pool using NFT collateral
-    function borrow(uint256 amount) external nonReentrant whenNotPaused {
+    function borrow(address borrower, uint256 amount) external nonReentrant whenNotPaused onlyPortal {
         require(netLoan <= poolBalance, "[*ERROR*] Insufficient pool liquidity!");
         //TODO check hf for Loan and Existing Collateral
 
@@ -136,7 +151,7 @@ contract LendingPool is ReentrancyGuard {
 
 
         // mint and give debt tokens to borrower
-        iDBToken.mint(msg.sender, totalLoan);
+        iDBToken.mint(borrower, totalLoan);
 
         // send eth to borrower
         (bool success, ) = msg.sender.call{value: netLoan}("");
@@ -146,18 +161,18 @@ contract LendingPool is ReentrancyGuard {
         poolBalance -= netLoan;
         netBorrowedPool += netLoan;
         totalBorrowedPool += totalLoan;
-        netBorrowedUsers[msg.sender] += netLoan;
-        totalBorrowedUsers[msg.sender] += totalLoan;
+        netBorrowedUsers[borrower] += netLoan;
+        totalBorrowedUsers[borrower] += totalLoan;
         // create a borrow event
-        emit Borrowed(msg.sender, amount);
+        emit Borrowed(borrower, amount);
     }
 
     // Allows users to repay borrowed ETH with interest
-    function repay(uint256 amount) external payable {
-        uint256 netDebt = netBorrowedUsers[msg.sender];
+    function repay(address borrower, uint256 amount) external payable onlyPortal {
+        uint256 netDebt = netBorrowedUsers[borrower];
         require(netDebt > 0, "[*ERROR*] No debt to repay!");
         require(totalDebt > 0, "[*ERROR*] No debt to repay!");
-        uint256 userBalance = iDBToken.balanceOf(msg.sender);
+        uint256 userBalance = iDBToken.balanceOf(borrower);
         require(userBalance >= amount, "[*ERROR*] Insufficient DB tokens!");
         uint256 interest = (netDebt * 10) / 100; // 10% interest
         uint256 totalDebt = netDebt + interest;
@@ -165,14 +180,14 @@ contract LendingPool is ReentrancyGuard {
         require(msg.value == totalDebt, "[*ERROR*] Incorrect repayment amount!");
 
         // Burn DB tokens from the borrower
-        iDBToken.burn(msg.sender, totalDebt);
+        iDBToken.burn(borrower, totalDebt);
 
         poolBalance += totalDebt;
         netBorrowedPool -= netDebt;
         totalBorrowedPool -= totalDebt;
 
-        netBorrowedUsers[msg.sender] -= netDebt;
-        totalBorrowedUsers[msg.sender] -= totalDebt;
+        netBorrowedUsers[borrower] -= netDebt;
+        totalBorrowedUsers[borrower] -= totalDebt;
 
         // Distribute interest proportionally as LP tokens or add to pool if no lenders
         uint256 activeTokens = iLPToken.getActiveTokens();
@@ -196,7 +211,7 @@ contract LendingPool is ReentrancyGuard {
     // Liquidates an NFT if the health factor drops below 1.2
     // this function is called by CM who transfers eth to Pool and this function updates LendPool accordingly
     // TODO update according to liquidate in CM
-    function liquidate(address borrower, address collection, uint256 tokenId, uint256 amount) external onlyOwner {
+    function liquidate(address borrower, address collection, uint256 tokenId, uint256 amount) external onlyTrader {
         // uint256 healthFactor = collateralManager.getHealthFactor(borrower, nftId);
         // require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
         uint256 nftValue = iCollateralManager.getNftValue(borrower, collection, tokenId);
