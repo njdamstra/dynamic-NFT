@@ -267,7 +267,9 @@ contract CollateralManager {
         emit NFTDeListed(collection, tokenId, block.timestamp());
     }
 
-    // Simpler Implementation, pushes incentive to buy nft below floorprice, only weakness: incentive for borrower to borrow, not repay and rebuy nft below floorprice? -F
+    // Simpler Implementation, pushes incentive to buy nft below floorprice,
+    // weakness I: incentive for borrower to borrow, not repay and rebuy nft below floorprice -> might be a loss for pool?
+    // weakness II: floorprice drops by 3%, affects hf for other borrowers with same collection nfts -F
     function getBasePrice(address collection, uint256 tokenId) public returns (uint256) {
         uint256 floorPrice = getNftValue(collection,tokenId);
         return (floorPrice * 97) / 100;
