@@ -1,19 +1,26 @@
 require("dotenv").config();
-const Web3 = require("web3");
-const axios = require("axios");
+const hre = require("hardhat");
+const { ethers } = require("ethers");
+const { Alchemy, Network } = require("alchemy-sdk");
+const { getSendTxParams } = require("web3-eth-contract");
 
 // Environment variables
-const LOCAL_NODE_URL = process.env.LOCAL_NODE_URL;
+const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
-const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
+const LOCAL_NODE_URL = process.env.LOCAL_NODE_URL;
 
-// Web3 setup
-const web3 = new Web3(new Web3.providers.HttpProvider(LOCAL_NODE_URL));
-const account = web3.eth.accounts.privateKeyToAccount(PRIVATE_KEY);
-web3.eth.accounts.wallet.add(account);
+// Hardhat setup
+const provider = new hre.ethers.JsonRpcProvider(LOCAL_NODE_URL);
+const wallet = new hre.ethers.Wallet(PRIVATE_KEY, provider);
 
-// Contract ABI
+// Alchemy setup
+const alchemy = new Alchemy({
+    apiKey: ALCHEMY_API_KEY,
+    network: Network.ETH_MAINNET,
+});
+
+// Contract ABI (simplified)
 const CONTRACT_ABI = [
     {
         "anonymous": false,
@@ -30,7 +37,7 @@ const CONTRACT_ABI = [
             { "internalType": "uint256", "name": "tokenId", "type": "uint256" },
             { "internalType": "uint256", "name": "price", "type": "uint256" }
         ],
-        "name": "updateNftPrice",
+        "name": "updateFloorPrice",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -38,64 +45,82 @@ const CONTRACT_ABI = [
 ];
 
 // Create contract instance
-const contract = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
+const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
 
-// Function to fetch NFT price from Alchemy
-async function fetchNftPrice(collectionAddr, tokenId) {
-    const url = `https://eth-mainnet.g.alchemy.com/nft/v2/${ALCHEMY_API_KEY}/getFloorPrice/?contractAddress=${collectionAddr}`;
+// Fetch floor price from Alchemy
+async function fetchFloorPrice(collectionAddr) {
     try {
-        const response = await axios.get(url);
-        const floorPrice = response.data.openSea.floorPrice || 0; // Fallback to 0 if no floor price
-        console.log(`Fetched floor price: ${floorPrice} ETH for Collection: ${collectionAddr}`);
-        return floorPrice * 10 ** 18; // Convert to WEI for on-chain usage
+        const response = await alchemy.nft.getFloorPrice(collectionAddr);
+        const floorPriceOS = response.openSea.floorPrice;
+        const floorPriceLR = response.looksRare.floorPrice;
+
+        if (!floorPriceOS) {
+            console.log(`No floor price found for collection ${collectionAddr} in OpenSea. Skipping.`);
+        }
+        if (!floorPriceLR) {
+            console.log(`No floor price found for collection ${collectionAddr} in LooksRare. Skipping.`);
+        }
+
+        const floorPriceAvg = (floorPriceLR + floorPriceOS) / 2;
+
+        // const floorPriceWeiOS = ethers.utils.parseEther(floorPriceOS.toString());
+        // const floorPriceWeiLR = ethers.utils.parseEther(floorPriceLR.toString());
+        const floorPriceWeiAvg = ethers.utils.parseEther(floorPriceAvg.toString());
+        console.log(`Updating floor price for collection ${collectionAddr}: ${floorPriceWeiAvg.toString()} wei`);
     } catch (error) {
-        console.error("Error fetching data from Alchemy:", error.message);
+        console.error("Error fetching floor price from Alchemy:", error.message);
         return 0;
     }
 }
 
-// Function to send the NFT price back to the contract
-async function updateNftPrice(collectionAddr, tokenId, price) {
+async function getValidity(collectionAddr) {
     try {
-        const tx = contract.methods.updateNftPrice(collectionAddr, tokenId, price);
-        const gas = await tx.estimateGas({ from: account.address });
-        const gasPrice = await web3.eth.getGasPrice();
-
-        const txData = {
-            from: account.address,
-            to: CONTRACT_ADDRESS,
-            data: tx.encodeABI(),
-            gas,
-            gasPrice
-        };
-
-        const signedTx = await web3.eth.accounts.signTransaction(txData, PRIVATE_KEY);
-        const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-        console.log(`NFT price updated: Transaction Hash: ${receipt.transactionHash}`);
+        const response = await alchemy.nft.isSpamContract(collectionAddr);
+        const isSpam = response.isSpamContract || true;
+        console.log("fetched isSpam: ${isSpam}");
+        return isSpam;
     } catch (error) {
-        console.error("Error sending transaction:", error.message);
+        console.error("error trying to fetch whether this collection is marked as spam or not", error.message);
+        return true;
     }
+
 }
 
-// Listen to the DataRequest event
-async function listenToEvents() {
+// Listen for DataRequest events
+async function listenToRequests() {
     console.log("Listening for DataRequest events...");
-    contract.events.DataRequest({}, async (error, event) => {
-        if (error) {
-            console.error("Error listening to events:", error.message);
-            return;
+
+    contract.on("FloorPriceRequest", async (collectionAddr, tokenId) => {
+        console.log(`Received request for Collection: ${collectionAddr}, Token ID: ${tokenId}`);
+
+        // Fetch the floor price
+        const floorPrice = await fetchFloorPrice(collectionAddr);
+
+        if (floorPrice > 0) {
+            // Call updateFloorPrice on the contract
+            try {
+                const tx = await contract.updateFloorPrice(collectionAddr, tokenId, floorPrice);
+                console.log(`Floor price updated! Transaction Hash: ${tx.hash}`);
+            } catch (error) {
+                console.error("Error updating floor price:", error.message);
+            }
+        } else {
+            console.log(`No valid floor price found for Collection: ${collectionAddr}`);
         }
-
-        const { collectionAddr, tokenId } = event.returnValues;
-        console.log(`Data request received for Collection: ${collectionAddr}, Token ID: ${tokenId}`);
-
-        // Fetch and update NFT price
-        const price = await fetchNftPrice(collectionAddr, tokenId);
-        if (price > 0) {
-            await updateNftPrice(collectionAddr, tokenId, price);
+    });
+    contract.on("ValidCollectionRequest", async (collectionAddr) => {
+        console.log('received request for validity on Collection: ${collectionAddr}');
+        const isSpam = await getValidity(collectionAddr);
+        try {
+            const tx = await hre.contract.updateInvalidList(collectionAddr, tokenId, floorPrice);
+            console.log(`Validity list updated! Transaction Hash: ${tx.hash}`);
+        } catch (error) {
+            console.error("Error updating validity list:", error.message);
         }
     });
 }
 
-// Start listening to events
-listenToEvents();
+// Start the script
+listenToRequests().catch((error) => {
+    console.error("Error starting listener:", error.message);
+});
