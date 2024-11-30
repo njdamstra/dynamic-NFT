@@ -37,7 +37,6 @@ contract NftTrader {
 
         collateralManagerAddr = _collateralManagerAddr;
         pool = _pool;
-        numCollections = 0;
         IPool = ILendingPool(pool);
     }
 
