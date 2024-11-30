@@ -214,11 +214,6 @@ contract CollateralManager {
         return iNftValues.getTokenIdPrice(collectionAddress, tokenId);
     }
 
-    //TODO get the actual value from oracle nftvalue
-    function getNftValue(Nft nft) private returns (uint256) {
-        return iNftValues.getTokenIdPrice(nft.collectionAddress, nft.tokenId);
-    }
-
     //TODO get the actual listing price for nft from nfttrader
     function getNftListingPrice(address collectionAddress, uint256 tokenId) private returns (uint256) {
         return;
@@ -238,7 +233,6 @@ contract CollateralManager {
         }
         return result;
     }
-
 
     function getCollateralValue(address borrower) public returns (uint256) {
         return getNftListValue(borrower);
@@ -262,9 +256,9 @@ contract CollateralManager {
         emit NFTDeListed(collection, tokenId, block.timestamp());
     }
 
-    // TODO assume hf is one, get proportion of nft to debt + interest
-    function getBasePrice(address collection, uint256 tokenId) public returns (uint256) {
-        return;
+    function getBasePrice(address borrower, address collection, uint256 tokenId) public returns (uint256) {
+        uint256 floorPrice = getNftValue(collection,tokenId);
+        return (floorPrice * 97) / 100;
     }
 
 }
