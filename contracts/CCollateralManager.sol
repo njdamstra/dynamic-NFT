@@ -250,7 +250,6 @@ contract CollateralManager {
         return getNftListValue(borrower);
     }
 
-    // TODO: create a basePrice for the given NFT, probably take it's floor price and subtract it's proportion of the debt + interest
     function addTradeListing(address borrower, address collection, uint256 tokenId) external private {
         uint256 basePrice = getBasePrice(collection, tokenId);
         // determine basePrice calculation.
@@ -268,10 +267,10 @@ contract CollateralManager {
         emit NFTDeListed(collection, tokenId, block.timestamp());
     }
 
-    // TODO assume hf is one, get proportion of nft to debt + interest
+    // Simpler Implementation, pushes incentive to buy nft below floorprice, only weakness: incentive for borrower to borrow, not repay and rebuy nft below floorprice? -F
     function getBasePrice(address collection, uint256 tokenId) public returns (uint256) {
         uint256 floorPrice = getNftValue(collection,tokenId);
-        return (floorPrice * 95) / 100;
+        return (floorPrice * 97) / 100;
 }
 
     // NATE TODO:
