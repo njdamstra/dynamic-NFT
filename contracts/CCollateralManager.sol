@@ -149,16 +149,12 @@ contract CollateralManager {
     // Aggregate collateral by adding NFTs to a borrower's profile
     // automatically transfers collateral to CM even before initializing there loan
     // if added collateral boosts its health factor enough, deList collateral from NftTrader and mark NftProvided auctionable to false.
-
-    // TODO add collateral to LiquidableCollateral map. -DONE-
-    // actually only if HF < 1.2 which happens through update LiquidatableCollateral(), the borrowersCollateral
-    // is updated through the CollateralProfile which gets adds the NFT to the NFTList, i commented it in the code -F
+    // TODO update pool
+    // TODO add collateral to LiquidableCollateral map.
     function addCollateral(address collectionAddress, uint256 tokenId) public {
         require(isNftValid(msg.sender, collectionAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
 
-        // what if this doesn't exist yet? i.e first nft borrower adds to his CP
-        // i think then its added automatically to the mapping but not sure -F
-
+        // uint256 nftValue = getNftValue(collectionAddress, tokenId);
         CollateralProfile memory collateralProfile = borrowersCollateral[msg.sender];
 
         for (uint256 i = 0; i < collateralProfile.nftList.length; i++) {
@@ -167,17 +163,14 @@ contract CollateralManager {
                 "[*ERROR*] Duplicate NFT in collateral!"
             );
         }
-        // here it is added to borrowersCollateral through the collateral profile -F
         IERC721 nftContract = IERC721(collectionAddress);
         nftContract.transferFrom(msg.sender, address(this), tokenId);
         collateralProfile.nftList.push(Nft(collectionAddress, tokenId, nftContract,false));
         collateralProfile.nftListLength++;
+        registerNft(collectionAddress, tokenId); // sends to NftValues to add to list of NFTs it keeps track of
 
-        // sends to NftValues to add to list of NFTs it keeps track of
-        registerNft(collectionAddress, tokenId);
+        nftContract.approve(nftTraderAddress, tokenId); // Approves NftTrader to transfer NFT on CM's behalf -N
 
-        // Approves NftTrader to transfer NFT on CM's behalf -N
-        nftContract.approve(nftTraderAddress, tokenId);
         emit CollateralAdded(msg.sender, collectionAddress, tokenId);
     }
 
@@ -221,12 +214,17 @@ contract CollateralManager {
         return collateralProfile.nftList;
     }
 
-    //NATE TODO get the actual value from oracle nftvalue
+    //TODO get the actual value from oracle nftvalue
     function getNftValue(address collectionAddress, uint256 tokenId) private returns (uint256) {
         return iNftValues.getTokenIdPrice(collectionAddress, tokenId);
     }
 
-    //NATE TODO get the actual listing price for nft from nfttrader
+    //TODO get the actual value from oracle nftvalue
+    function getNftValue(Nft nft) private returns (uint256) {
+        return iNftValues.getTokenIdPrice(nft.collectionAddress, nft.tokenId);
+    }
+
+    //TODO get the actual listing price for nft from nfttrader
     function getNftListingPrice(address collectionAddress, uint256 tokenId) private returns (uint256) {
         return;
     }
@@ -246,10 +244,12 @@ contract CollateralManager {
         return result;
     }
 
+
     function getCollateralValue(address borrower) public returns (uint256) {
         return getNftListValue(borrower);
     }
 
+    // TODO: create a basePrice for the given NFT, probably take it's floor price and subtract it's proportion of the debt + interest
     function addTradeListing(address borrower, address collection, uint256 tokenId) external private {
         uint256 basePrice = getBasePrice(collection, tokenId);
         // determine basePrice calculation.
@@ -267,13 +267,9 @@ contract CollateralManager {
         emit NFTDeListed(collection, tokenId, block.timestamp());
     }
 
-    // Simpler Implementation, pushes incentive to buy nft below floorprice,
-    // weakness I: incentive for borrower to borrow, not repay and rebuy nft below floorprice -> might be a loss for pool?
-    // weakness II: floorprice drops by 3%, affects hf for other borrowers with same collection nfts -F
+    // TODO assume hf is one, get proportion of nft to debt + interest
     function getBasePrice(address collection, uint256 tokenId) public returns (uint256) {
-        uint256 floorPrice = getNftValue(collection,tokenId);
-        return (floorPrice * 97) / 100;
-}
+    }
 
     // NATE TODO:
     function registerNft(address collection, uint256 tokenId) private {
@@ -281,7 +277,6 @@ contract CollateralManager {
 
     // NATE TODO:
     function deregisterNft(address collection, uint256 tokenId) private {
-        return;
     }
 
 }

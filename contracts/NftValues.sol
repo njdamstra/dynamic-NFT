@@ -22,9 +22,9 @@ contract NftValues {
     Nft[] public nftList; // array of NFTs (Nft struct) being used as collateral
     mapping(address => mapping(uint256 => uint256)) public nftIndex; // finds index of where the nft is stored in nftList
 
+    event DataRequest(address indexed collectionAddr, uint256 indexed tokenId);
     event FloorPriceUpdated(address indexed collection, uint256 newFloorPrice, uint256 timestamp);
     event NftPriceUpdated(address indexed collection, uint256 indexed tokenId, uint256 newNftPrice, uint256 timestamp);
-    event CollectionAdded(address indexed collection, string name, uint256 timestamp);
     event CollectionAdded(address indexed collectionAddr, uint256 floorPrice, uint256 timestamp);
     event CollectionRemoved(address indexed collectionAddr);
     // Events for tracking additions and removals
@@ -196,6 +196,20 @@ contract NftValues {
         return getNft(collection, tokenId).price;
     }
 
+    // Emit a data request event
+    function requestNftData(address collectionAddr, uint256 tokenId) external onlyOwner {
+        emit DataRequest(collectionAddr, tokenId);
+    }
+
+    // Update the price of an NFT
+    function updateNftPrice(address collectionAddr, uint256 tokenId, uint256 price) external onlyOwner {
+        
+        getNft[collectionAddr][tokenId].price = price;
+        // getNft[collectionAddr][tokenId].accept = accept;
+        emit NftPriceUpdated(collectionAddr, tokenId, price, accept);
+    }
+
+    function isAcceptable(address collectionAddr, tokenId)
 
 
 
