@@ -4,7 +4,24 @@ const fs = require("fs");
 const path = require("path");
 
 async function main() {
-    const [deployer] = await ethers.getSigners();
+    const signers = await ethers.getSigners();
+
+    // Pre-assign names to signers
+    const signerNames = ["deployer", "lender1", "borrower1", "liquidator1", "lender2", "borrower2", "lender3", "borrower3",
+        "lender4", "borrower4", "lender5", "borrower5"];
+    console.log("Saving signers with assigned names...");
+
+    // Save signer information with names
+    const signerData = signers.map((signer, index) => ({
+        index,
+        name: signerNames[index] || `user${index}`, // Use a default name if no specific name is assigned
+        address: signer.address,
+        privateKey: signer.privateKey || `0x${signer._signingKey().privateKey.toString("hex")}`,
+    }));
+    const signersPath = path.join(__dirname, "signers.json");
+    fs.writeFileSync(signersPath, JSON.stringify(signerData, null, 2));
+    console.log(`Signers saved to ${signersPath}`);
+
     console.log("Deploying contracts with:", deployer.address);
 
     // Deploy GoodNft (Mock NFT contract)

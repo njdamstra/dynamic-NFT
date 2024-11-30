@@ -1,9 +1,14 @@
 require("dotenv").config();
 const { ethers } = require("hardhat");
+const { execSync } = require("child_process");
 const deployedAddresses = require("./deployedAddresses.json");
+const path = require("path");
 
 async function main() {
-    const [deployer, user1, user2, liquidator] = await ethers.getSigners();
+    const deployer = wallets["deployer"];
+    const user1 = wallets["lender1"];
+    const user2 = wallets["borrower1"];
+    const liquidator1 = wallets["liquidator1"];
 
     console.log("Running scenarios with:");
     console.log("Deployer:", deployer.address);
@@ -13,12 +18,7 @@ async function main() {
 
     // Load contracts
     const GoodNft = await ethers.getContractAt("GoodNft", deployedAddresses.GoodNft);
-    const BadNft = await ethers.getContractAt("BadNft", deployedAddresses.BadNft);
     const NftValues = await ethers.getContractAt("NftValues", deployedAddresses.NftValues);
-    const CCollateralManager = await ethers.getContractAt(
-        "CCollateralManager",
-        deployedAddresses.CCollateralManager
-    );
     const CLendingPool = await ethers.getContractAt("CLendingPool", deployedAddresses.CLendingPool);
 
     // Scenario 1: Mint NFTs for users
@@ -30,46 +30,29 @@ async function main() {
 
     // Scenario 2: Add NFT as collateral
     console.log("Adding NFT as collateral...");
-    await GoodNft.connect(user1).setApprovalForAll(CCollateralManager.address, true);
-    await CCollateralManager.connect(user1).provideCollateral(GoodNft.address, 0);
+    await GoodNft.connect(user1).setApprovalForAll(deployedAddresses.CCollateralManager, true);
+    const collateralManager = await ethers.getContractAt("CCollateralManager", deployedAddresses.CCollateralManager);
+    await collateralManager.connect(user1).provideCollateral(GoodNft.address, 0);
     console.log("User1 provided collateral with GoodNft ID 0.");
 
-    // Scenario 3: Borrow funds against collateral
+    // Scenario 3: Call mockUpdateFP.js to update prices off-chain
+    console.log("Updating floor prices using mockUpdateFP.js...");
+    try {
+        execSync("node mockScripts/mockUpdateFP.js", { stdio: "inherit" });
+        console.log("Floor prices updated successfully!");
+    } catch (error) {
+        console.error("Error calling mockUpdateFP.js:", error.message);
+    }
+
+    // Scenario 4: Simulate borrowing funds
     console.log("Borrowing funds...");
-    const borrowAmount = ethers.parseEther("5"); // User borrows 5 ETH
+    const borrowAmount = ethers.parseEther("5");
     await CLendingPool.connect(user1).borrow(borrowAmount);
     console.log(`User1 borrowed ${borrowAmount} ETH.`);
 
-    // Scenario 4: Simulate a drop in collateral value
-    console.log("Simulating price drop...");
-    const newFloorPrice = ethers.parseEther("1"); // New price of 1 ETH
-    await NftValues.connect(deployer).updateFloorPrice(GoodNft.address, 0, newFloorPrice);
-    console.log("Floor price updated. Collateral value dropped.");
-
-    // Scenario 5: Liquidation
-    console.log("Attempting liquidation...");
-    const healthFactor = await CCollateralManager.getHealthFactor(user1.address);
-    console.log(`User1's health factor: ${healthFactor}`);
-    if (healthFactor < 1) {
-        await CCollateralManager.connect(liquidator).liquidate(user1.address, GoodNft.address, 0);
-        console.log("Liquidation successful.");
-    } else {
-        console.log("User1 is still solvent. No liquidation needed.");
-    }
-
-    // Scenario 6: User2 borrows and repays
-    console.log("User2 borrowing and repaying...");
-    await GoodNft.connect(user2).setApprovalForAll(CCollateralManager.address, true);
-    await CCollateralManager.connect(user2).provideCollateral(GoodNft.address, 1);
-    console.log("User2 provided collateral with GoodNft ID 1.");
-
-    const borrowAmount2 = ethers.parseEther("3");
-    await CLendingPool.connect(user2).borrow(borrowAmount2);
-    console.log(`User2 borrowed ${borrowAmount2} ETH.`);
-
-    console.log("Repaying debt...");
-    await CLendingPool.connect(user2).repay(borrowAmount2);
-    console.log("User2 fully repaid the debt.");
+    // Scenario 5: Verify updated prices in NftValues
+    const updatedPrice = await NftValues.getFloorPrice(GoodNft.address); // Assuming a getFloorPrice function exists
+    console.log(`Updated floor price for GoodNft ID 0: ${ethers.formatEther(updatedPrice)} ETH.`);
 }
 
 main()

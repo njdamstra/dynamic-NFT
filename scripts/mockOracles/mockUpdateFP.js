@@ -1,5 +1,6 @@
 require("dotenv").config();
 const { ethers } = require("hardhat");
+const deployedAddresses = require("./deployedAddresses.json");
 
 // Load environment variables
 const LOCAL_NODE_URL = process.env.LOCAL_NODE_URL || "http://127.0.0.1:8545";
