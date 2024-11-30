@@ -160,25 +160,47 @@ contract CollateralManager {
                 "[*ERROR*] Duplicate NFT in collateral!"
             );
         }
-        IERC721 nft = IERC721(collectionAddress);
-        nft.transferFrom(msg.sender, address(this), tokenId);
-        collateralProfile.nftList.push(Nft(collectionAddress, tokenId, nft,false));
+        IERC721 nftContract = IERC721(collectionAddress);
+        nftContract.transferFrom(msg.sender, address(this), tokenId);
+        collateralProfile.nftList.push(Nft(collectionAddress, tokenId, nftContract,false));
         collateralProfile.nftListLength++;
-        nft.approve(nftTraderAddress, tokenId); // Approves NftTrader to transfer NFT on CM's behalf -N
+        nftContract.approve(nftTraderAddress, tokenId); // Approves NftTrader to transfer NFT on CM's behalf -N
 
         emit CollateralAdded(msg.sender, collectionAddress, tokenId);
     }
 
-    // TODO: redeem your NFT
-    function redeemCollateral(address borrower, address collection, uint256 tokenId) public {
+    function redeemCollateral(address borrower, address collectionAddress, uint256 tokenId) public {
         uint256 healthFactor = getHealthFactor(borrower);
-        require(isNftValid(borrower,collection,tokenId), "[*ERROR* Nft not valid]");
+        require(isNftValid(borrower, collectionAddress,tokenId), "[*ERROR* Nft not valid]");
         require(healthFactor > 150,"[*ERROR*] Health Factor has to be above 1.5 to redeem collateral!");
-        Nft[] nftList = getNftList(borrower);
-        nftList.pop(nft);
-        uint256 newCollateralValue = getListValue(borrower, nftList);
+
+        // get a new List without the redeemed Nft
+        Nft[] memory nftListCopy = getNftList(borrower);
+        uint256 length = nftListCopy.length;
+
+        bool found = false;
+        for (uint256 i = 0; i < length; i++) {
+            if (nftListCopy[i].collectionAddress == collectionAddress && nftListCopy[i].tokenId == tokenId) {
+                // Swap with the last element and shorten the array
+                nftListCopy[i] = nftListCopy[length - 1];
+                found = true;
+                length--;
+                break;
+            }
+        }
+
+        // check healthfactor for the new list
+        uint256 newCollateralValue = getListValue(borrower, nftListCopy);
         uint newHealthFactor = calculateHealthFactor(borrower,newCollateralValue);
+
+        if (found && healthFactor > 120) {
+            // update collateral profile
+            Nft[] nftContract = IERC721(collectionAddress);
+            nftContract.transferFrom(address(this),borrower,tokenId);
+            _deleteNftFromCollateralProfile(borrower, collectionAddress, tokenId);
+        }
         require(healthFactor > 120,"[*ERROR*] Health Factor has to be above 1.2!");
+        require(found, "[*ERROR*] Nft was not found!");
     }
 
     // Get the total value of all NFTs in a borrower's collateral profile
@@ -190,10 +212,6 @@ contract CollateralManager {
     //TODO get the actual value from oracle nftvalue
     function getNftValue(address collectionAddress, uint256 tokenId) private returns (uint256) {
         return iNftValues.getTokenIdPrice(collectionAddress, tokenId);
-    }
-
-    function getNft(address collectionAddress, uint256 tokenId) private returns (Nft){
-        return;
     }
 
     //TODO get the actual value from oracle nftvalue
