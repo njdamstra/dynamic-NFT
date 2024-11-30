@@ -10,11 +10,16 @@ import {ICollateralManager} from "../interfaces/ICollateralManager.sol";
 
 
 contract LendingPool is ReentrancyGuard {
-    mapping(address => uint256) public netBorrowedUsers; // Tracks ETH (without interest) currently borrowed by borrowers
+    address[] lenders;
+    address[] borrowers;
+
+    mapping(address => uint256) public totalSuppliedUsers; // Tracks ETH (without interest) supplied by lenders
     mapping(address => uint256) public totalBorrowedUsers; // Tracks ETH (with interest) currently borrowed by users
 
+
+    mapping(address => uint256) public netBorrowedUsers; // Tracks ETH (without interest) currently borrowed by borrowers
+
     mapping(address => uint256) public netSuppliedUsers; // Tracks ETH (without interest) supplied by lenders
-    mapping(address => uint256) public totalSuppliedUsers; // Tracks ETH (without interest) supplied by lenders
 
 
     uint256 public netBorrowedPool;    // Tracks ETH (without interest) borrowed from the pool
@@ -22,12 +27,12 @@ contract LendingPool is ReentrancyGuard {
     uint256 public poolBalance;      // Tracks current ETH in the pool
 
     address public lpTokenAddr;
-    ILPToken public iLPToken;          // Loan Pool Token
+    //ILPToken public iLPToken;          // Loan Pool Token
     address public dbTokenAddr;
-    IDBToken public iDBToken;          // Debt Token
+    //IDBToken public iDBToken;          // Debt Token
 
-    LPToken public lpToken;
-    DBToken public dbToken;
+    //LPToken public lpToken;
+    //DBToken public dbToken;
 
     address public collateralManagerAddr;
     ICollateralManager public iCollateralManager; // Contract managing NFT collateral
@@ -40,16 +45,9 @@ contract LendingPool is ReentrancyGuard {
         owner = msg.sender;
     }
 
-    // TODO: Logic behind interfaces for LP and DB Tokens
-    function initialize(address _lpTokenAddr, address _dbTokenAddr, address _collateralManagerAddr) external onlyOwner {
-        require(lpToken == address(0), "Already initialized");
-        require(_lpTokenAddr != address(0) && _dbTokenAddr != address(0) && _collateralManagerAddr != address(0), "Invalid addresses");
+    function initialize(address _collateralManagerAddr) external onlyOwner {
 
         paused = false;
-        lpTokenAddr = _lpTokenAddr;
-        //iLPToken = ILPToken(lpTokenAddr);
-        dbTokenAddr = _dbTokenAddr;
-        //iDBToken = IDBToken(dpTokenAddr);
         collateralManagerAddr = _collateralManagerAddr;
         iCollateralManager = ICollateralManager(collateralManagerAddr);
     }
@@ -70,7 +68,6 @@ contract LendingPool is ReentrancyGuard {
     event Repaid(address indexed user, uint256 amount);
     event Liquidated(address indexed borrower, uint256 tokenId, uint256 amountRecovered);
 
-    // Transfers ETH into the pool with minting tokens
     function transfer(uint256 amount) external payable {
         require(msg.value == amount, "[*ERROR*] Incorrect ETH amount sent!");
         require(amount > 0, "[*ERROR*] Cannot transfer zero ETH!");
@@ -90,34 +87,40 @@ contract LendingPool is ReentrancyGuard {
     }
 
     // Allows users to supply ETH to the pool
-    function supply(uint256 amount) external payable {
-        require(msg.value == amount, "[*ERROR*] Incorrect amount of ETH supplied!");
+    function supply(address lender, uint256 amount) external payable {
         require(amount > 0, "[*ERROR*] Cannot supply zero ETH!");
 
+        if (isLender(lender)) {
+            totalSuppliedUsers[lender] += amount;
+        } else {
+            addLenderIfNotExists(lender, amount);
+        }
         // Update the pool balance
         poolBalance += amount;
-        netSuppliedUsers[msg.sender] += amount;
-
-        // Mint LP tokens proportional to the supplied amount
-        iLPToken.mint(msg.sender, amount);
-        emit Supplied(msg.sender, amount);
+        //netSuppliedUsers[lender] += amount;
+        emit Supplied(lender, amount);
     }
 
     // Allows users to withdraw ETH from the pool
-    function withdraw(uint256 amount) external nonReentrant whenNotPaused {
+    function withdraw(address lender, uint256 amount) external nonReentrant whenNotPaused {
         require(amount > 0, "[*ERROR*] Cannot withdraw zero ETH!");
-        uint256 userBalance = iLPToken.balanceOf(msg.sender);
-        require(userBalance >= amount, "[*ERROR*] Insufficient LP tokens!");
+        require(isLender(lender), "[*ERROR*] User is not a lender");
+        require(poolBalance >= amount, "[*ERROR*] Insufficient funds in pool!");
+        uint256 userBalance = totalSuppliedUsers[lender];
+        require(userBalance >= amount, "[*ERROR*] Insufficient funds in balance!");
 
         // Update the pool balance
         poolBalance -= amount;
-        netSuppliedUsers[msg.sender] -= amount;
 
-        // Burn the LP tokens
-        iLPToken.burn(msg.sender, amount);
+        //update suppliedUsers
+        totalSuppliedUsers[lender] -= amount;
+
+        if (!totalSuppliedUsers[lender] > 0) {
+            deleteLender(lender);
+        }
 
         // Transfer the ETH to the user
-        (bool success, ) = msg.sender.call{value: amount}("");
+        (bool success, ) = lender.call{value: amount}("");
         require(success, "[*ERROR*] Transfer failed!");
         emit Withdrawn(msg.sender, amount);
     }
@@ -133,10 +136,6 @@ contract LendingPool is ReentrancyGuard {
         uint256 totalLoan = amount + interest;
 
         //TODO get the NFT value & ensure HF
-
-
-        // mint and give debt tokens to borrower
-        iDBToken.mint(msg.sender, totalLoan);
 
         // send eth to borrower
         (bool success, ) = msg.sender.call{value: netLoan}("");
@@ -246,6 +245,99 @@ contract LendingPool is ReentrancyGuard {
         totalDebtETH = totalBorrowedUsers[user];
         lpTokenBalance = iLPToken.balanceOf(user);
         dbTokenBalance = iDBToken.balanceOf(user);
+    }
+
+    function allocateInterest(uint256 amount) private {
+        uint256 totalSupplied = getTotalSupplied();
+        for (uint256 i = 0; i < lenders.length; i++) {
+            address lender = lenders[i];
+            uint256 lenderBalance = totalSuppliedUsers[lender];
+
+            if (totalSupplied > 0) {
+                uint256 lenderShare = (lenderBalance * amount) / totalSupplied;
+                totalSuppliedUsers[lender] += lenderShare; // Update mapping with new balance
+            }
+        }
+    }
+
+    function getTotalSupplied() private view returns (uint256) {
+        uint256 total = 0;
+        for (uint256 i = 0; i < lenders.length; i++) {
+            total += totalSuppliedUsers[lenders[i]];
+        }
+        return total;
+    }
+
+    function isLender(address lender) public view returns (bool) {
+        if (totalSuppliedUsers[lender] == 0) {
+            delete totalSuppliedUsers[lender];
+            return false;
+        }
+        for (uint256 i = 0; i < lenders.length; i++) {
+            if (lenders[i] == lender) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function addLenderIfNotExists(address lender, uint256 initialAmount) public {
+        // Check if the lender already exists using the isLender function
+        if (!isLender(lender)) {
+            lenders.push(lender); // Add the lender to the lenders array
+            totalSuppliedUsers[lender] = initialAmount; // Initialize their supplied amount
+        }
+    }
+
+    function isBorrower(address borrower) public view returns (bool) {
+        if (totalBorrowedUsers[borrower] == 0) {
+            delete totalBorrowedUsers[borrower];
+            return false;
+        }
+        for (uint256 i = 0; i < borrowers.length; i++) {
+            if (borrowers[i] == borrower) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function addBorrowerIfNotExists(address borrower, uint256 initialAmount) public {
+        // Check if the borrower already exists using the isBorrower function
+        if (!isBorrower(borrower)) {
+            borrowers.push(borrower); // Add the borrower to the borrowers array
+            totalBorrowedUsers[borrower] = initialAmount; // Initialize their borrowed amount
+        }
+    }
+
+    function deleteLender(address lender) public {
+        // Check if the lender exists
+        require(isLender(lender), "Lender does not exist");
+        // Remove from the lenders array
+        for (uint256 i = 0; i < lenders.length; i++) {
+            if (lenders[i] == lender) {
+                lenders[i] = lenders[lenders.length - 1]; // Move the last element to the deleted spot
+                lenders.pop(); // Remove the last element
+                break;
+            }
+        }
+        // Remove from the mapping
+        delete totalSuppliedUsers[lender];
+    }
+
+    function deleteBorrower(address borrower) public {
+        // Check if the borrower exists
+        require(isBorrower(borrower), "Borrower does not exist");
+        // Remove from the borrowers array
+        for (uint256 i = 0; i < borrowers.length; i++) {
+            if (borrowers[i] == borrower) {
+                borrowers[i] = borrowers[borrowers.length - 1]; // Move the last element to the deleted spot
+                borrowers.pop(); // Remove the last element
+                break;
+            }
+        }
+        // Remove from the mapping
+        delete totalBorrowedUsers[borrower];
     }
 
 }

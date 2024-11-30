@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract UserPortal is ReentrancyGuard {
+
     address public CMAddr;
     address public LPAddr;
     address public NTAddr;
@@ -17,11 +18,13 @@ contract UserPortal is ReentrancyGuard {
     ICollateralManager public iCollateralManager;
     ILendingPool public iPool;
 
-    constant address public owner;
+    address public owner;
 
     constructor () {
         owner = msg.sender;
     }
+
+
 
     function initializer(address _CMAddr, address _LPAddr, address _NFTAddr) external onlyOwner {
         CMAddr = _CMAddr;
