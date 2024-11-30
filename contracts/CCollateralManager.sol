@@ -70,10 +70,14 @@ contract CollateralManager {
     // Calculate the health factor for a user
     function getHealthFactor(address borrower) public returns (uint256) {
         uint256 totalCollateral = getCollateralValue(borrower);
+        return calculateHealthFactor(borrower, totalCollateral);
+    }
+
+    function calculateHealthFactor(address borrower, uint256 collateralValue) private returns (uint256) {
         uint256 totalDebt = LendingPool(pool).totalBorrowedUsers(borrower);
         if (totalDebt == 0) return type(uint256).max; // Infinite health factor if no debt
-        require(totalCollateral <= type(uint256).max / 100, "[*ERROR*] Collateral value too high!");
-        return (totalCollateral * 100) / totalDebt;
+        require(collateralValue <= type(uint256).max / 100, "[*ERROR*] Collateral value too high!");
+        return (collateralValue * 100) / totalDebt;
     }
 
     // Get a list of all liquidatable NFTs for a user
@@ -166,9 +170,26 @@ contract CollateralManager {
     }
 
     // TODO: redeem your NFT
-    function redeemCollateral(address collection, uint256 tokenId) public {
-        // only if hf allows for it
-        // if loan amount is 0, we automatically transfer NFT back
+    function redeemCollateral(address borrower, address collection, uint256 tokenId) public {
+        uint256 healthFactor = getHealthFactor(borrower);
+        require(isNftValid(borrower,collection,tokenId), "[*ERROR* Nft not valid]");
+        require(healthFactor > 150,"[*ERROR*] Health Factor has to be above 1.5 to redeem collateral!");
+        Nft[] nftList = getNftList(borrower);
+
+    }
+
+    function sortNftListValDesc(Nft[] memory nftList) private returns (Nft[]) {
+        for (uint256 i = 0; i < nftList.length; i++) {
+            for (uint256 j = i + 1; j < nftList.length; j++) {
+                if (getNftValue(nftList[i]) < getNftValue(nftList[j])) {
+                    // Swap nfts[i] and nfts[j]
+                    Nft memory temp = nftList[i];
+                    nftList[i] = nftList[j];
+                    nftList[j] = temp;
+                }
+            }
+        }
+        return nftList;
     }
 
     // Get the total value of all NFTs in a borrower's collateral profile
@@ -180,6 +201,11 @@ contract CollateralManager {
     //TODO get the actual value from oracle nftvalue
     function getNftValue(address collectionAddress, uint256 tokenId) private returns (uint256) {
         return iNftValues.getTokenIdPrice(collectionAddress, tokenId);
+    }
+
+    //TODO get the actual value from oracle nftvalue
+    function getNftValue(Nft nft) private returns (uint256) {
+        return iNftValues.getTokenIdPrice(nft.collectionAddress, nft.tokenId);
     }
 
     //TODO get the actual listing price for nft from nfttrader
