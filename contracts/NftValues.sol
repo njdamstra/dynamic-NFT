@@ -4,22 +4,32 @@ pragma solidity ^0.8.18;
 contract NftValues {
     address public owner;
 
-    address[] public collectionAddresses; //renamed from collections -F
-    uint public collectionsLength;
-
-    mapping(address => NftCollection) public nftCollections; //renamed from collectionData -F
+    NftCollection[] public collectionList; // list of all active collections
+    // Mapping to track the index of each collection in the array
+    mapping(address => uint256) public collectionIndex;
 
     struct NftCollection {
         address collection; // NFT contract address or is it the same as collectionAddress?
-        string name;
         uint256 floorPrice;
-        uint256[] tokenIds; // list of tokenIds used for this collection //is tokeId = nftid? -F
-        mapping(uint256 => uint256) nftPrice;
     }
+
+    // lists of nfts we're keeping track of
+    struct Nft {
+        address collection;
+        uint256 tokenId;
+        uint256 price;
+    }
+    Nft[] public nftList; // array of NFTs (Nft struct) being used as collateral
+    mapping(address => mapping(uint256 => uint256)) public nftIndex; // finds index of where the nft is stored in nftList
 
     event FloorPriceUpdated(address indexed collection, uint256 newFloorPrice, uint256 timestamp);
     event NftPriceUpdated(address indexed collection, uint256 indexed tokenId, uint256 newNftPrice, uint256 timestamp);
     event CollectionAdded(address indexed collection, string name, uint256 timestamp);
+    event CollectionAdded(address indexed collectionAddr, uint256 floorPrice, uint256 timestamp);
+    event CollectionRemoved(address indexed collectionAddr);
+    // Events for tracking additions and removals
+    event NftAdded(address indexed collection, uint256 indexed tokenId);
+    event NftRemoved(address indexed collection, uint256 indexed tokenId);
 
     constructor() { //Is the owner not always CollateralManager? -F
         owner = msg.sender;
@@ -43,31 +53,150 @@ contract NftValues {
         owner = newOwner;
     }
 
-    // Update floor price of a collection
-    function updateFloorPrice(address collection, uint256 newFloorPrice) external onlyOwner {
-        require(isCollectionPartOfList(collection), "[*ERROR*] Collection not found!");
-        require(newFloorPrice > 0, "[*ERROR*] Floor price must be positive!");
+    // ** COLLECTIONLIST FUNCTIONS **
 
-        nftCollections[collection].floorPrice = newFloorPrice;
+
+    function addCollection(address collectionAddr) external onlyOwner {
+        require(collectionAddr != address(0), "Invalid collection address");
+        if (collectionIndex[collectionAddr] != 0 && (
+            collectionList.length != 0 || collectionList[collectionIndex[collectionAddr]].collectionAddr == collectionAddr
+            )) {
+                return; // collection already in list
+            }
+        // Add the new collection
+        collectionList.push(NftCollection(collectionAddr, 0));
+        collectionIndex[collectionAddr] = collectionList.length - 1; // Store the index of the collection
+        emit CollectionAdded(collectionAddr, floorPrice);
+    }
+
+    // Remove a collection from the list
+    function removeCollection(address collectionAddr) external onlyOwner {
+        require(collectionAddr != address(0), "Invalid collection address");
+        uint256 index = collectionIndex[collectionAddr];
+        if (index >= collectionList.length && collectionList[index].collectionAddr != collectionAddr) {
+            return; // collection is not part of the list
+        }
+        // Ensure no NFTs from this collection are in collateralNfts
+        for (uint256 i = 0; i < collateralNfts.length; i++) {
+            if (nftList[i].collection == collectionAddr) {
+                return; // "Cannot remove collection with active collateral NFTs"
+            }
+        }
+        // Move the last element into the place of the element to remove
+        uint256 lastIndex = collectionList.length - 1;
+        if (index != lastIndex) {
+            NftCollection memory lastCollection = collectionList[lastIndex];
+            collectionList[index] = lastCollection; // Overwrite the removed element with the last element
+            collectionIndex[lastCollection.collectionAddr] = index; // Update the index of the moved element
+        }
+        // Remove the last element
+        collectionList.pop();
+        delete collectionIndex[collectionAddr]; // Delete the index mapping for the removed collection
+        emit CollectionRemoved(collectionAddr);
+    }
+
+    function getCollectionList() public view returns (address[]) {
+        return collectionAddresses;
+    }
+
+    function getCollection(address collection) public returns (memory NftCollection) {
+        return collectionList(collectionIndex[collection]);
+    }
+
+    function getFloorPrice(address collection) public view returns (uint256) {
+        return getCollection(collection).floorPrice;
+    }
+
+    // ** Floor Price off chain interactions **
+
+
+
+    // Update the floor price of an existing collection
+    function updateFloorPrice(address collectionAddr, uint256 newFloorPrice) external onlyOwner {
+        require(collectionAddr != address(0), "Invalid collection address");
+        uint256 index = collectionIndex[collectionAddr];
+        if (index >= collectionList.length && collectionList[index].collectionAddr != collectionAddr) {
+            return; // not in the list of collections
+        }
+        if (newFloorPrice <= 0) {
+            return; // not a valid floor price (must be more than 0)
+        }
+        // Update the floor price
+        collectionList[index].floorPrice = newFloorPrice;
         emit FloorPriceUpdated(collection, newFloorPrice, block.timestamp);
+    }
 
-        updateNftPrices(collection);
+    // TODO: emit an event that a script listens for to update floor price of a specific collection
+    function requestFloorPrice(address collection) internal {
+    }
+
+
+
+
+
+
+
+
+
+
+    /////////////////// ** NFTLIST FUNCTIONS ** /////////////////////
+
+
+    // Add an NFT to the list
+    function addNft(address collection, uint256 tokenId) external onlyOwner {
+        if (nftIndex[collection][tokenId] != 0 && (
+            nftList.length != 0 || nftList[nftIndex[collection][tokenId]].collection == collection
+            )) {
+            return; // nft already on the list!
+        }
+
+        // Add the NFT to the array
+        nftList.push(Nft(collection, tokenId));
+        nftIndex[collection][tokenId] = nftList.length - 1; // Store the index of the NFT
+
+        emit NftAdded(collection, tokenId);
+    }
+
+    // Remove an NFT from the list
+    function removeNft(address collection, uint256 tokenId) external onlyOwner {
+        if (nftList.length <= 0) {
+            return; // no NFTs to remove
+        }
+        uint256 index = nftIndex[collection][tokenId];
+        if (nftList[index].collection != collection && nftList[index].tokenId != tokenId) {
+            return; // NFT not found in list
+        }
+        // Move the last element into the place of the element to remove
+        uint256 lastIndex = nftList.length - 1;
+        if (index != lastIndex) {
+            Nft memory lastNft = nftList[lastIndex];
+            nftList[index] = lastNft; // Overwrite the removed element with the last element
+            nftIndex[lastNft.collection][lastNft.tokenId] = index; // Update the index of the moved element
+        }
+        // Remove the last element
+        nftList.pop();
+        delete nftIndex[collection][tokenId]; // Delete the index mapping for the removed NFT
+        emit NftRemoved(collection, tokenId);
+    }
+    // Get the full list of collateral NFTs (off-chain call)
+    function getNftList() external view returns (Nft[] memory) {
+        return nftList;
+    }
+
+    function getNft(address collection, uint256 tokenId) public returns (memory Nft) {
+        return nftList[nftIndex[collection][tokenId]];
     }
 
     // Update all NFT prices in a collection
-    function updateNftPrices(address collection) public onlyOwner {
-        NftCollection storage nftCollection = nftCollections[collection];
-        uint256 floorPrice = nftCollection.floorPrice;
-
-        for (uint256 i = 0; i < nftCollection.tokenIds.length; i++) {
-            uint256 tokenId = nftCollection.tokenIds[i];
-            uint256 oldPrice = nftCollection.nftPrice[tokenId];
-            uint256 newPrice = nftPricingScheme(collection, tokenId, oldPrice, floorPrice);
-            nftCollection.nftPrice[tokenId] = newPrice;
-
-            emit NftPriceUpdated(collection, tokenId, newPrice, block.timestamp);
-        }
+    function updatePrice(address collection, uint256 tokenId, uint256 newPrice) public onlyOwner {
+        getNft(collection, tokenId).price = newPrice;
     }
+
+    function getPrice(address collection, uint256 tokenId) public view {
+        return getNft(collection, tokenId).price;
+    }
+
+
 
 
     // TODO: logic on adjusting the price we evaluate the individual NFT to be if we want to analyse it beyond it's floor price
@@ -79,34 +208,15 @@ contract NftValues {
         return nftCollections[collection].nftPrice[tokenId];
     }
 
-    function getFloorPrice(address collection) public view returns (uint256) {
-        return nftCollections[collection].floorPrice;
-    }
 
-    function getCollectionList() public view returns (address[]) {
-        return collectionAddresses;
-    }
+
+
 
     function getTokenIds(address collection) public view returns (uint256[]) {
         return nftCollections[collection].tokenIds;
     }
 
-    // Function to add a new NFT collection
-    function addCollection(address collection, string memory name, uint256 initialFloorPrice) external onlyOwner {
-        require(!isCollectionPartOfList(collection), "[*ERROR*] Collection already added!");
-        require(initialFloorPrice > 0, "[*ERROR*] Floor price must be positive!");
-
-        // Initialize collection data
-        NftCollection storage nftCollection = nftCollections[collection];
-        nftCollection.collection = collection;
-        nftCollection.name = name;
-        nftCollection.floorPrice = initialFloorPrice;
-
-        collectionAddresses.push(collection);
-        collectionsLength += 1;
-
-        emit CollectionAdded(collection, name, block.timestamp);
-    }
+    
 
     // Add a token to a collection
     function addTokenToCollection(address collection, uint256 tokenId, uint256 initialPrice) external onlyOwner {
