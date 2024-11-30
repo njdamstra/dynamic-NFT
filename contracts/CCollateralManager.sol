@@ -28,6 +28,7 @@ contract CollateralManager {
     address public pool;
     address public nftTraderAddress;
     address public nftValuesAddress;
+    address public portal;
     INftValues public iNftValues;
     INftTrader public iNftTrader;
 
@@ -39,10 +40,10 @@ contract CollateralManager {
     }
 
     // Initialize function to set dependencies
-    function initialize(address _pool, address _nftTrader, address _nftValues) external {
+    function initialize(address _pool, address _nftTrader, address _nftValues, address _portal) external {
         require(pool == address(0), "Already initialized");
         require(_pool != address(0) && _nftTrader != address(0) && _nftValues != address(0), "Invalid addresses");
-
+        portal = _portal;
         pool = _pool;
         nftTraderAddress = _nftTrader;
         nftValuesAddress = _nftValues;
@@ -55,6 +56,10 @@ contract CollateralManager {
         _;
     }
 
+    modifier onlyPortal() {
+        require(msg.sender == portal, "[*ERROR*] Only the pool can call this function!");
+        _;
+    }
     // Events
     event NFTListed(address indexed borrower, address indexed collection, uint256 tokenId, uint256 valueListing, uint256 timestamp);
     event NFTDeListed(address indexed collection, uint256 tokenId, uint256 timestamp);
@@ -74,7 +79,7 @@ contract CollateralManager {
     }
 
     function calculateHealthFactor(address borrower, uint256 collateralValue) private returns (uint256) {
-        uint256 totalDebt = LendingPool(pool).totalBorrowedUsers(borrower);
+        uint256 totalDebt = iPool.totalBorrowedUsers(borrower);
         if (totalDebt == 0) return type(uint256).max; // Infinite health factor if no debt
         require(collateralValue <= type(uint256).max / 100, "[*ERROR*] Collateral value too high!");
         return (collateralValue * 100) / totalDebt;
@@ -150,11 +155,11 @@ contract CollateralManager {
     // automatically transfers collateral to CM even before initializing there loan
     // if added collateral boosts its health factor enough, deList collateral from NftTrader and mark NftProvided auctionable to false.
     // TODO update pool
-    function addCollateral(address collectionAddress, uint256 tokenId) public {
+    function addCollateral(address borrower, address collectionAddress, uint256 tokenId) public onlyPortal {
         require(isNftValid(msg.sender, collectionAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
 
         // uint256 nftValue = getNftValue(collectionAddress, tokenId);
-        CollateralProfile memory collateralProfile = borrowersCollateral[msg.sender];
+        CollateralProfile memory collateralProfile = borrowersCollateral[borrower];
 
         for (uint256 i = 0; i < collateralProfile.nftList.length; i++) {
             require(
@@ -163,19 +168,19 @@ contract CollateralManager {
             );
         }
         IERC721 nftContract = IERC721(collectionAddress);
-        nftContract.transferFrom(msg.sender, address(this), tokenId);
+        nftContract.transferFrom(portal, address(this), tokenId);
         collateralProfile.nftList.push(Nft(collectionAddress, tokenId, nftContract,false));
         collateralProfile.nftListLength++;
         registerNft(collectionAddress, tokenId); // sends to NftValues to add to list of NFTs it keeps track of
 
         nftContract.approve(nftTraderAddress, tokenId); // Approves NftTrader to transfer NFT on CM's behalf -N
 
-        emit CollateralAdded(msg.sender, collectionAddress, tokenId);
+        emit CollateralAdded(borrower, collectionAddress, tokenId);
     }
 
-    function redeemCollateral(address borrower, address collectionAddress, uint256 tokenId) public {
+    function redeemCollateral(address borrower, address collectionAddress, uint256 tokenId) public onlyPortal {
         uint256 healthFactor = getHealthFactor(borrower);
-        require(isNftValid(borrower, collectionAddress,tokenId), "[*ERROR* Nft not valid]");
+        // require(isNftValid(borrower, collectionAddress,tokenId), "[*ERROR* Nft not valid]");
         require(healthFactor > 150,"[*ERROR*] Health Factor has to be above 1.5 to redeem collateral!");
 
         // get a new List without the redeemed Nft
@@ -195,16 +200,16 @@ contract CollateralManager {
 
         // check healthfactor for the new list
         uint256 newCollateralValue = getListValue(borrower, nftListCopy);
-        uint newHealthFactor = calculateHealthFactor(borrower,newCollateralValue);
+        uint256 newHealthFactor = calculateHealthFactor(borrower,newCollateralValue);
 
-        if (found && healthFactor > 120) {
+        if (found && newHealthFactor > 120) {
             // update collateral profile
             Nft[] nftContract = IERC721(collectionAddress);
-            nftContract.transferFrom(address(this),borrower,tokenId);
+            nftContract.transferFrom(address(this), pool, tokenId);
             _deleteNftFromCollateralProfile(borrower, collectionAddress, tokenId);
         }
         require(healthFactor > 120,"[*ERROR*] Health Factor has to be above 1.2!");
-        require(found, "[*ERROR*] Nft was not found!");
+        // require(found, "[*ERROR*] Nft was not found!"); // we don't want to crash the system for errors like these
     }
 
     // Get the total value of all NFTs in a borrower's collateral profile
@@ -246,7 +251,7 @@ contract CollateralManager {
         return getNftListValue(borrower);
     }
 
-    function addTradeListing(address borrower, address collection, uint256 tokenId) external private {
+    function addTradeListing(address borrower, address collection, uint256 tokenId) private {
         uint256 basePrice = getBasePrice(collection, tokenId);
         // determine basePrice calculation.
         uint256 duration = 1000;
@@ -257,7 +262,7 @@ contract CollateralManager {
     }
 
     //TODO error is interface
-    function delistTrade(address collection, uint256 tokenId) external private {
+    function delistTrade(address collection, uint256 tokenId) private {
         iNftTrader.delist(collection, tokenId);
         // emit NFTDeListed event
         emit NFTDeListed(collection, tokenId, block.timestamp());
