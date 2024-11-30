@@ -214,14 +214,14 @@ contract CollateralManager {
     }
 
     //TODO get the actual value from oracle nftvalue
-    function getNftValue(address collectionAddress, uint256 tokenId) private returns (uint256) {
-        return iNftValues.getTokenIdPrice(collectionAddress, tokenId);
+    function getNftValue(address collectionAddress) private returns (uint256) {
+        return iNftValues.getFloorPrice(collectionAddress);
     }
 
-    //TODO get the actual value from oracle nftvalue
-    function getNftValue(address collection, uint256 tokenId) private returns (uint256) {
-        return iNftValues.getTokenIdPrice(collection, tokenId);
-    }
+    // //TODO get the actual value from oracle nftvalue
+    // function getNftValue(address collection, uint256 tokenId) private returns (uint256) {
+    //     return iNftValues.getPrice(collection, tokenId);
+    // }
 
     //TODO get the actual listing price for nft from nfttrader
     function getNftListingPrice(address collectionAddress, uint256 tokenId) private returns (uint256) {
@@ -238,7 +238,7 @@ contract CollateralManager {
         for (uint256 i = 0; i < nftList.length; i++) {
             address collectionAddress = nftList[i].collectionAddress;
             uint256 tokenId = nftList[i].tokenId;
-            result += getNftValue(collectionAddress, tokenId); // Accumulate the value of each NFT
+            result += getNftValue(collectionAddress); // Accumulate the value of each NFT
         }
         return result;
     }
@@ -268,16 +268,14 @@ contract CollateralManager {
 
     // TODO assume hf is one, get proportion of nft to debt + interest
     function getBasePrice(address collection, uint256 tokenId) public returns (uint256) {
-        uint256 floorprice = getNftValue(collection, tokenId);
+        uint256 floorprice = getNftValue(collection);
         return (floorprice * 95) / 100;
     }
 
     // NATE TODO:
     function registerNft(address collection, uint256 tokenId) private {
-    }
+        iNftTrader.addCollection(collection);
 
-    // NATE TODO:
-    function deregisterNft(address collection, uint256 tokenId) private {
     }
 
 }

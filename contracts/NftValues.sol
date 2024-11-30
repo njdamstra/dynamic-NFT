@@ -23,6 +23,7 @@ contract NftValues {
     mapping(address => mapping(uint256 => uint256)) public nftIndex; // finds index of where the nft is stored in nftList
 
     event DataRequest(address indexed collectionAddr, uint256 indexed tokenId);
+    event RequestFloorPrice(address indexed collectionAddr);
     event FloorPriceUpdated(address indexed collection, uint256 newFloorPrice, uint256 timestamp);
     event NftPriceUpdated(address indexed collection, uint256 indexed tokenId, uint256 newNftPrice, uint256 timestamp);
     event CollectionAdded(address indexed collectionAddr, uint256 floorPrice, uint256 timestamp);
@@ -66,6 +67,7 @@ contract NftValues {
         // Add the new collection
         collectionList.push(NftCollection(collectionAddr, 0));
         collectionIndex[collectionAddr] = collectionList.length - 1; // Store the index of the collection
+        emit RequestFloorPrice(collectionAddr);
         emit CollectionAdded(collectionAddr, floorPrice);
     }
 
