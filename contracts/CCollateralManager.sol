@@ -102,28 +102,31 @@ contract CollateralManager {
     function updateLiquidatableCollateral(address borrower) private {
         uint256 healthFactor = getHealthFactor(borrower);
         Nft[] memory nftList = getNftList(borrower);
+
+        // Clear the current storage array for the borrower
+        delete liquidatableCollateral[borrower];
+
         if (healthFactor < 120) {
             for (uint256 i = 0; i < nftList.length; i++) {
                 Nft memory item = nftList[i];
                 if (!item.isLiquidatable) {
                     addTradeListing(borrower, item.collectionAddress, item.tokenId);
-                    nftList[i].isLiquidatable = true;
+                    item.isLiquidatable = true;
                 }
+                // Manually push each updated item to the storage array
+                liquidatableCollateral[borrower].push(item);
             }
-            liquidatableCollateral[borrower] = nftList;
-        }
-        else {
+        } else {
             for (uint256 i = 0; i < nftList.length; i++) {
                 Nft memory item = nftList[i];
                 if (item.isLiquidatable) {
-                    nftList[i].isLiquidatable = false;
                     delistTrade(item.collectionAddress, item.tokenId);
                 }
             }
-            Nft[] memory emptyList;
-            liquidatableCollateral[borrower] = emptyList;
+            // Ensure the storage array is cleared (already done above)
         }
     }
+
 
     function updateAllLiquidatableCollateral() external {
         address[] memory borrowerList = iLendingPool.getBorrowerList();
