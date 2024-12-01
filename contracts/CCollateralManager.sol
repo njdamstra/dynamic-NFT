@@ -169,7 +169,7 @@ contract CollateralManager {
     function addCollateral(address borrower, address collectionAddress, uint256 tokenId) public onlyPortal {
         require(isNftValid(borrower, collectionAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
         // check whether borrower already exists
-        CollateralProfile storage collateralProfile;
+        CollateralProfile storage collateralProfile = borrowersCollateral[borrower];
         if (iLendingPool.isBorrower(borrower)) {
             collateralProfile = borrowersCollateral[borrower];
             for (uint256 i = 0; i < collateralProfile.nftList.length; i++) {
@@ -180,7 +180,6 @@ contract CollateralManager {
         } else {
             // if borrower does not exist yet, add him to the pool borrower mapping
             iLendingPool.addBorrowerIfNotExists(borrower);
-            Nft[] memory nftList;
             collateralProfile.nftListLength = 0;
         }
 
@@ -192,8 +191,8 @@ contract CollateralManager {
 
         registerNft(collectionAddress, tokenId); // sends to NftValues to add to list of NFTs it keeps track of
         nftContract.approve(nftTraderAddress, tokenId); // Approves NftTrader to transfer NFT on CM's behalf -N
-        //TODO value, ts
-        emit CollateralAdded(borrower, collectionAddress, tokenId,1,1);
+        //TODO emit value
+        emit CollateralAdded(borrower, collectionAddress, tokenId,1,block.timestamp);
     }
 
     function redeemCollateral(address borrower, address collectionAddress, uint256 tokenId) public onlyPortal {
@@ -217,7 +216,7 @@ contract CollateralManager {
         }
 
         // check healthfactor for the new list
-        uint256 newCollateralValue = getListValue(borrower, nftListCopy);
+        uint256 newCollateralValue = getListValue(nftListCopy);
         uint256 newHealthFactor = calculateHealthFactor(borrower,newCollateralValue);
 
         if (found && newHealthFactor > 120) {
@@ -231,32 +230,31 @@ contract CollateralManager {
     }
 
     // Get the total value of all NFTs in a borrower's collateral profile
-    function getNftList(address borrower) private returns (Nft[] memory) {
+    function getNftList(address borrower) private view returns (Nft[] memory) {
         CollateralProfile memory collateralProfile = borrowersCollateral[borrower];
         return collateralProfile.nftList;
     }
 
     //TODO NATE get the actual value from oracle nftvalue
-    function getNftValue(address collectionAddress) public returns (uint256) {
+    function getNftValue(address collectionAddress) public view returns (uint256) {
         return iNftValues.getFloorPrice(collectionAddress);
     }
 
 
     //TODO NATE get the actual listing price for nft from nfttrader
-    function getNftListingPrice(address collectionAddress, uint256 tokenId) private returns (uint256) {
+    function getNftListingPrice(address collectionAddress, uint256 tokenId) pure private returns (uint256) {
         return 0;
     }
 
     function getNftListValue(address borrower) private returns (uint256) {
         Nft[] memory nftList = getNftList(borrower);
-        return getListValue(borrower, nftList);
+        return getListValue(nftList);
     }
 
-    function getListValue(address borrower, Nft[] memory nftList) private returns (uint256) {
+    function getListValue(Nft[] memory nftList) private view returns (uint256) {
         uint256 result = 0;
         for (uint256 i = 0; i < nftList.length; i++) {
             address collectionAddress = nftList[i].collectionAddress;
-            uint256 tokenId = nftList[i].tokenId;
             result += getNftValue(collectionAddress); // Accumulate the value of each NFT
         }
         return result;
@@ -267,7 +265,7 @@ contract CollateralManager {
     }
 
     function addTradeListing(address borrower, address collection, uint256 tokenId) private {
-        uint256 basePrice = getBasePrice(collection, tokenId);
+        uint256 basePrice = getBasePrice(collection);
         // determine basePrice calculation.
         uint256 duration = 1000;
         iNftTrader.addListing(basePrice, collection, tokenId, true, duration, borrower);
@@ -282,13 +280,13 @@ contract CollateralManager {
 
     }
 
-    function getBasePrice(address collection, uint256 tokenId) public returns (uint256) {
+    function getBasePrice(address collection) public view returns (uint256) {
         uint256 floorprice = getNftValue(collection);
         return (floorprice * 95) / 100;
     }
 
     // TODO NATE:
-    function registerNft(address collection, uint256 tokenId) private {
+    function registerNft(address collection, uint256 tokenId) pure private {
         //iNftTrader.addCollection(collection);
         return;
     }

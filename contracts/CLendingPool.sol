@@ -69,7 +69,7 @@ contract LendingPool is ReentrancyGuard {
     event Repaid(address indexed user, uint256 amount);
     event Liquidated(address indexed borrower, uint256 tokenId, uint256 amountRecovered);
 
-    function isLender(address lender) public view returns (bool) {
+    function isLender(address lender) public returns (bool) {
         if (lenderIndex[lender] == 0) {
             return false;
         }
@@ -80,7 +80,7 @@ contract LendingPool is ReentrancyGuard {
         return true;
     }
 
-    function isBorrower(address borrower) public view returns (bool) {
+    function isBorrower(address borrower) public returns (bool) {
         if (borrowerIndex[borrower] == 0) {
             return false;
         }
@@ -241,7 +241,7 @@ contract LendingPool is ReentrancyGuard {
 
         // check hf for new loan
         uint256 collateralValue = iCollateralManager.getCollateralValue(borrower);
-        uint256 newHealthFactor = calculateHealthFactor(borrower,newTotalDebt, collateralValue);
+        uint256 newHealthFactor = calculateHealthFactor(newTotalDebt, collateralValue);
 
         require(newHealthFactor > 150, "[*ERROR*] New health factor too low to borrow more money!");
 
@@ -264,7 +264,7 @@ contract LendingPool is ReentrancyGuard {
     }
 
     // @Helper
-    function calculateHealthFactor(address borrower, uint256 debtValue, uint256 collateralValue) private returns (uint256) {
+    function calculateHealthFactor(uint256 debtValue, uint256 collateralValue) pure private returns (uint256) {
         if (debtValue == 0) return type(uint256).max; // Infinite health factor if no debt
         require(collateralValue <= type(uint256).max / 100, "[*ERROR*] Collateral value too high!");
         return (collateralValue * 100) / debtValue;
@@ -312,7 +312,7 @@ contract LendingPool is ReentrancyGuard {
     function liquidate(address borrower, address collection, uint256 tokenId, uint256 amount) external onlyTrader {
         // uint256 healthFactor = collateralManager.getHealthFactor(borrower, nftId);
         // require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
-        uint256 nftValue = iCollateralManager.getNftValue(collection);
+        //uint256 nftValue = iCollateralManager.getNftValue(collection);
         //TODO
         iCollateralManager.liquidateNft(borrower, collection, tokenId,1);
 
@@ -373,7 +373,7 @@ contract LendingPool is ReentrancyGuard {
         return total;
     }
 
-    function getTotalBorrowedUsers(address borrower) public returns (uint256) {
+    function getTotalBorrowedUsers(address borrower) public view returns (uint256) {
         return totalBorrowedUsers[borrower];
     }
 
