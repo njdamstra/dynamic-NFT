@@ -31,6 +31,13 @@ async function main() {
     deployedAddresses["BadNft"] = bNftAddr;
     console.log("BadNft deployed to:", bNftAddr);
 
+    // Deploy MockOracle contract
+    const MockOracle = await ethers.getContractFactory("MockOracle");
+    const mockOracle = await MockOracle.connect(deployer).deploy();
+    const mockOracleAddr = await mockOracle.getAddress();
+    deployedAddresses["MockOracle"] = mockOracleAddr;
+    console.log("MockOracle deployed to:", mockOracleAddr);
+
     // Deploy UserPortal
     const UserPortal = await ethers.getContractFactory("UserPortal");
     const portal = await UserPortal.deploy();
@@ -110,6 +117,7 @@ async function main() {
     await addresses.setAddress("NftTrader", traderAddr);
     await addresses.setAddress("LendingPool", poolAddr);
     await addresses.setAddress("UserPortal", portalAddr);
+    await addresses.setAddress("MockOracle", mockOracleAddr);
     await addresses.setAddress("deployer", deployer.address);
 
     console.log("Addresses contract initialized with contract addresses!");
@@ -125,6 +133,7 @@ async function main() {
         NftTrader: traderAddr,
         CLendingPool: poolAddr,
         UserPortal: portalAddr,
+        MockOracle: mockOracleAddr,
     });
 
     const filePath = path.join(__dirname, "deployedAddresses.json");

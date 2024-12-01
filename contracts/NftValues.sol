@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
+import {IMockOracle} from "./interfaces/IMockOracle.sol";
+
 contract NftValues {
     address public owner;
 
@@ -8,9 +10,17 @@ contract NftValues {
     // Mapping to track the index of each collection in the array
     mapping(address => uint256) public collectionIndex;
 
+    bool public useOnChainOracle;
+    address public onChainOracle;
+    IMockOracle public iOnChainOracle;
+    address public collateralManager;
+
     struct NftCollection {
         address collection; // NFT contract address or is it the same as collectionAddress?
         uint256 floorPrice;
+        bool safe;
+        bool pending;
+        bool notPending;
     }
 
     // // lists of nfts we're keeping track of
@@ -24,9 +34,9 @@ contract NftValues {
 
     // event DataRequest(address indexed collectionAddr, uint256 indexed tokenId);
     event RequestFloorPrice(address indexed collectionAddr);
-    event FloorPriceUpdated(address indexed collection, uint256 newFloorPrice, uint256 timestamp);
+    event FloorPriceUpdated(address indexed collection, uint256 newFloorPrice, bool safe, uint256 timestamp);
     // event NftPriceUpdated(address indexed collection, uint256 indexed tokenId, uint256 newNftPrice, uint256 timestamp);
-    event CollectionAdded(address indexed collectionAddr, uint256 floorPrice, uint256 timestamp);
+    event CollectionAdded(address indexed collectionAddr, uint256 floorPrice, bool pending, uint256 timestamp);
     event CollectionRemoved(address indexed collectionAddr);
     // Events for tracking additions and removals
     // event NftAdded(address indexed collection, uint256 indexed tokenId);
@@ -37,14 +47,26 @@ contract NftValues {
     }
 
     // Initialize function to set the CollateralManager address
-    function initialize(address _collateralManagerAddr) external {
+    function initialize(address _collateralManagerAddr, bool _useOnChainOracle, address _onChainOracle) external onlyOwner {
         require(owner == msg.sender, "Only the owner can call this function");
         require(_collateralManagerAddr != address(0), "Invalid address");
-        owner = _collateralManagerAddr;
+        collateralManager = _collateralManagerAddr;
+        useOnChainOracle = _useMockOracle;
+        if (useOnChainOracle) {
+            onChainOracle = _onChainOracle;
+            iOnChainOracle = IMockOracle(onChainOracle);
+        } else {
+            onChainOracle = address(0);
+        }
     }
 
     modifier onlyOwner() {
         require(msg.sender == owner, "[*ERROR*] Only the Owner can call this function!");
+        _;
+    }
+
+    modifier onlyCollateralManager() {
+        require(msg.sender == collateralManager, "[*ERROR*] Only the Owner can call this function!");
         _;
     }
 
@@ -56,7 +78,7 @@ contract NftValues {
     // ** COLLECTIONLIST FUNCTIONS **
 
 
-    function addCollection(address collectionAddr) external onlyOwner {
+    function addCollection(address collectionAddr) external onlyCollateralManager {
         require(collectionAddr != address(0), "Invalid collection address");
         if (collectionIndex[collectionAddr] != 0 && (
             collectionList.length != 0 || collectionList[collectionIndex[collectionAddr]].collection == collectionAddr
@@ -64,14 +86,19 @@ contract NftValues {
                 return; // collection already in list
             }
         // Add the new collection
-        collectionList.push(NftCollection(collectionAddr, 0));
+        collectionList.push(NftCollection(collectionAddr, 0, true, true, false));
         collectionIndex[collectionAddr] = collectionList.length - 1; // Store the index of the collection
         //emit RequestFloorPrice(collectionAddr);
-        //emit CollectionAdded(collectionAddr, floorPrice);
+        emit CollectionAdded(collectionAddr, 0, true, block.timestamp);
+        if (useOnChainOracle) {
+            requestOnChainFloorPrice(collectionAddr);
+        } else {
+            requestOffChainFloorPrice(collectionAddr);
+        }
     }
 
     // Remove a collection from the list
-    function removeCollection(address collectionAddr) external onlyOwner {
+    function removeCollection(address collectionAddr) external onlyCollateralManager {
         require(collectionAddr != address(0), "Invalid collection address");
         uint256 index = collectionIndex[collectionAddr];
         require(index < collectionList.length, "Collection is not part of the list");
@@ -98,12 +125,16 @@ contract NftValues {
     }
 
 
-    function getCollectionList() public view returns (address[] memory) {
+    function getCollectionAddrList() public view returns (address[] memory) {
         address[] memory addresses = new address[](collectionList.length);
         for (uint256 i = 0; i < collectionList.length; i++) {
             addresses[i] = collectionList[i].collection;
         }
         return addresses;
+    }
+
+    function getCollectionList() public view returns (NftCollection[] memory) {
+        return collectionList;
     }
 
     function getCollection(address collection) public view returns (NftCollection memory) {
@@ -112,7 +143,21 @@ contract NftValues {
     }
 
     function getFloorPrice(address collection) public view returns (uint256) {
+        if (getCollection(collection))
         return getCollection(collection).floorPrice;
+    }
+
+    function collectionStatus(address collection) public view returns (uint) {
+        NftCollection memory col = getCollection(collection);
+        if (col.safe) {
+            return 1; // safe and can be used
+        } else if (col.pending) {
+            return 2; // pending oracle response for price and safety report
+        } else if (!col.pending && !col.notPending) {
+            return 2; // never requested so pending safety status
+        } else {
+            return 0; // not pending and not safe
+        }
     }
 
     // ** Floor Price off chain interactions **
@@ -120,7 +165,8 @@ contract NftValues {
 
 
     // Update the floor price of an existing collection
-    function updateFloorPrice(address collectionAddr, uint256 newFloorPrice) external onlyOwner {
+    function updateFloorPrice(address collectionAddr, uint256 newFloorPrice) external {
+        require(msg.sender == owner || msg.sender == onChainOracle, "Don't have access rights to update Floor Price");
         require(collectionAddr != address(0), "Invalid collection address");
         uint256 index = collectionIndex[collectionAddr];
         if (index >= collectionList.length && collectionList[index].collection != collectionAddr) {
@@ -131,12 +177,31 @@ contract NftValues {
         }
         // Update the floor price
         collectionList[index].floorPrice = newFloorPrice;
-        emit FloorPriceUpdated(collectionAddr, newFloorPrice, block.timestamp);
+        emit FloorPriceUpdated(collectionAddr, newFloorPrice, collectionList[index].safe, block.timestamp);
     }
 
-    // TODO: emit an event that a script listens for to update floor price of a specific collection
-    // function requestFloorPrice(address collection) internal {
-    // }
+
+    function updateCollection(address collectionAddr, uint256 floorPrice, bool safe) external {
+        require(msg.sender == owner || msg.sender == onChainOracle, "Don't have access rights to initiate Collection");
+        require(collectionAddr != address(0), "Invalid collection address");
+        NftCollection memory col = collectionList[collectionIndex[collectionAddr]];
+        if (col.collection == collectionAddr) {
+            col.pending = false;
+            col.notPending = true;
+            col.safe = safe;
+            col.floorPrice = floorPrice;
+            emit FloorPriceUpdated(collectionAddr)
+        }
+    }
+
+    // request to update collections floor price of a specific collection using On Chain Oracle;
+    function requestOnChainFloorPrice(address collection) internal {
+        iOnChainOracle.requestFloorPrice(collection);
+    }
+    // emit an event that a script listens for to update floor price of a specific collection
+    function requestOffChainFloorPrice(address collection) internal {
+        emit RequestFloorPrice(collection);
+    }
 
 
 
