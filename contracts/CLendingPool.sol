@@ -199,6 +199,8 @@ contract LendingPool is ReentrancyGuard {
             totalBorrowedUsers[borrower] -= amount;
         }
 
+        poolBalance += amount;
+
         emit Repaid(borrower, amount);
     }
 
@@ -218,18 +220,8 @@ contract LendingPool is ReentrancyGuard {
 
         uint256 totalDebt = totalBorrowedUsers[borrower];
 
-        uint256 debtReduction = amount > totalDebt ? totalDebt : amount;
-        uint256 remainingDebt = totalDebt > debtReduction ? totalDebt - debtReduction : 0;
-
-
-        netBorrowedUsers[borrower] = remainingDebt;
-        totalBorrowedUsers[borrower] = remainingDebt;
-
-        poolBalance += debtReduction;
-
-        uint256 profit = amount > totalDebt ? amount - totalDebt : 0;
-
-        // Distribute profit as interest
+        // debt is repaid with liquidated amount
+        repay(borrower,amount);
 
         emit Liquidated(borrower, tokenId, 0);
     }
