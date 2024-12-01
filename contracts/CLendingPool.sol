@@ -154,6 +154,7 @@ contract LendingPool is ReentrancyGuard {
             return; // Lender is not in the list
         }
 
+
         uint256 lastIndex = lenders.length - 1;
         if (index != lastIndex) {
             // Swap the lender to delete with the last lender.
