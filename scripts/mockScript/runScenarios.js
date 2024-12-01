@@ -3,23 +3,26 @@ const { ethers } = require("hardhat");
 const { execSync } = require("child_process");
 const deployedAddresses = require("./deployedAddresses.json");
 const path = require("path");
+const { loadWallets } = require("./loadWallets");
 
 async function main() {
+    // Load wallets dynamically
+    const wallets = loadWallets();
+
+    console.log("Loaded wallets:");
+    Object.keys(wallets).forEach((name) => {
+        console.log(`${name}: ${wallets[name].address}`);
+    });
+
     const deployer = wallets["deployer"];
     const user1 = wallets["lender1"];
     const user2 = wallets["borrower1"];
-    const liquidator1 = wallets["liquidator1"];
-
-    console.log("Running scenarios with:");
-    console.log("Deployer:", deployer.address);
-    console.log("User1:", user1.address);
-    console.log("User2:", user2.address);
-    console.log("Liquidator:", liquidator.address);
+    const liquidator = wallets["liquidator1"];
 
     // Load contracts
-    const GoodNft = await ethers.getContractAt("GoodNft", deployedAddresses.GoodNft);
+    const GoodNft = await ethers.getContractAt("GoodNFT", deployedAddresses.GoodNft);
     const NftValues = await ethers.getContractAt("NftValues", deployedAddresses.NftValues);
-    const CLendingPool = await ethers.getContractAt("CLendingPool", deployedAddresses.CLendingPool);
+    const CLendingPool = await ethers.getContractAt("LendingPool", deployedAddresses.CLendingPool);
 
     // Scenario 1: Mint NFTs for users
     console.log("Minting NFTs...");

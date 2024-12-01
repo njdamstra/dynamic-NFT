@@ -2,26 +2,9 @@ require("dotenv").config();
 const { ethers } = require("hardhat");
 const fs = require("fs");
 const path = require("path");
+const signerData = require("./signers.json");
 
 async function main() {
-    const signers = await ethers.getSigners();
-
-    // Pre-assign names to signers
-    const signerNames = ["deployer", "lender1", "borrower1", "liquidator1", "lender2", "borrower2", "lender3", "borrower3",
-        "lender4", "borrower4", "lender5", "borrower5"];
-    console.log("Saving signers with assigned names...");
-
-    // Save signer information with names
-    const signerData = signers.map((signer, index) => ({
-        index,
-        name: signerNames[index] || `user${index}`, // Use a default name if no specific name is assigned
-        address: signer.address,
-        privateKey: signer.privateKey || `0x${signer._signingKey().privateKey.toString("hex")}`,
-    }));
-    const signersPath = path.join(__dirname, "signers.json");
-    fs.writeFileSync(signersPath, JSON.stringify(signerData, null, 2));
-    console.log(`Signers saved to ${signersPath}`);
-
     // Load named wallets
     const wallets = signerData.reduce((acc, signer) => {
         acc[signer.name] = new ethers.Wallet(signer.privateKey, ethers.provider);
@@ -32,93 +15,116 @@ async function main() {
 
     console.log("Deploying contracts with:", deployer.address);
 
+    const deployedAddresses = {}; // Initialize the deployedAddresses object
+
     // Deploy GoodNft (Mock NFT contract)
-    const GoodNft = await ethers.getContractFactory("GoodNft");
-    const goodNft = await GoodNft.deploy();
-    await goodNft.deployed();
-    console.log("GoodNft deployed to:", goodNft.address);
+    const GNft = await ethers.getContractFactory("GoodNFT");
+    const gNft = await GNft.deploy();
+    const gNftAddr = await gNft.getAddress();
+    deployedAddresses["GoodNft"] = gNftAddr;
+    console.log("GoodNft deployed to:", gNftAddr);
 
     // Deploy BadNft (Mock NFT contract)
-    const BadNft = await ethers.getContractFactory("BadNft");
-    const badNft = await BadNft.deploy();
-    await badNft.deployed();
-    console.log("BadNft deployed to:", badNft.address);
+    const BNft = await ethers.getContractFactory("BadNFT");
+    const bNft = await BNft.deploy();
+    const bNftAddr = await bNft.getAddress();
+    deployedAddresses["BadNft"] = bNftAddr;
+    console.log("BadNft deployed to:", bNftAddr);
+
+    // Deploy UserPortal
+    const UserPortal = await ethers.getContractFactory("UserPortal");
+    const portal = await UserPortal.deploy();
+    const portalAddr = await portal.getAddress();
+    deployedAddresses["UserPortal"] = portalAddr;
+    console.log("UserPortal deployed to:", portalAddr);
 
     // Deploy CAddresses
-    const CAddresses = await ethers.getContractFactory("CAddresses");
-    const cAddresses = await CAddresses.deploy();
-    await cAddresses.deployed();
-    console.log("CAddresses deployed to:", cAddresses.address);
+    const CAddresses = await ethers.getContractFactory("Addresses");
+    const addresses = await CAddresses.deploy();
+    const addressesAddr = await addresses.getAddress();
+    deployedAddresses["CAddresses"] = addressesAddr;
+    console.log("CAddresses deployed to:", addressesAddr);
 
     // Deploy CLendingPool
-    const CLendingPool = await ethers.getContractFactory("CLendingPool");
-    const cLendingPool = await CLendingPool.deploy();
-    await cLendingPool.deployed();
-    console.log("CLendingPool deployed to:", cLendingPool.address);
+    const CLendingPool = await ethers.getContractFactory("LendingPool");
+    const pool = await CLendingPool.deploy();
+    const poolAddr = await pool.getAddress();
+    deployedAddresses["CLendingPool"] = poolAddr;
+    console.log("CLendingPool deployed to:", poolAddr);
 
     // Deploy CCollateralManager
-    const CCollateralManager = await ethers.getContractFactory("CCollateralManager");
-    const cCollateralManager = await CCollateralManager.deploy();
-    await cCollateralManager.deployed();
-    console.log("CCollateralManager deployed to:", cCollateralManager.address);
+    const CCollateralManager = await ethers.getContractFactory("CollateralManager");
+    const collateralManager = await CCollateralManager.deploy();
+    const CMAddr = await collateralManager.getAddress();
+    deployedAddresses["CCollateralManager"] = CMAddr;
+    console.log("CCollateralManager deployed to:", CMAddr);
 
     // Deploy NftTrader
     const NftTrader = await ethers.getContractFactory("NftTrader");
     const nftTrader = await NftTrader.deploy();
-    await nftTrader.deployed();
-    console.log("NftTrader deployed to:", nftTrader.address);
+    const traderAddr = await nftTrader.getAddress();
+    deployedAddresses["NftTrader"] = traderAddr;
+    console.log("NftTrader deployed to:", traderAddr);
 
     // Deploy NftValues
     const NftValues = await ethers.getContractFactory("NftValues");
     const nftValues = await NftValues.deploy();
-    await nftValues.deployed();
-    console.log("NftValues deployed to:", nftValues.address);
+    const nftValuesAddr = await nftValues.getAddress();
+    deployedAddresses["NftValues"] = nftValuesAddr;
+    console.log("NftValues deployed to:", nftValuesAddr);
 
     // Initialize contracts
     console.log("Initializing contracts...");
 
     // Initialize NftValues
-    await nftValues.initialize(cCollateralManager.address);
+    await nftValues.initialize(CMAddr);
     console.log("NftValues initialized.");
 
     // Initialize CCollateralManager
-    await cCollateralManager.initialize(
-        cLendingPool.address,
-        nftTrader.address,
-        nftValues.address
+    await collateralManager.initialize(
+        poolAddr,
+        traderAddr,
+        nftValuesAddr,
+        portalAddr
     );
     console.log("CCollateralManager initialized.");
 
     // Initialize NftTrader
-    await nftTrader.initialize(cCollateralManager.address, cLendingPool.address);
+    await nftTrader.initialize(CMAddr, poolAddr, portalAddr);
     console.log("NftTrader initialized.");
 
     // Initialize CLendingPool
-    const lpTokenAddr = "0xMockLpTokenAddress"; // Replace with actual LPToken contract address if available
-    const dbTokenAddr = "0xMockDbTokenAddress"; // Replace with actual DBToken contract address if available
-    await cLendingPool.initialize(lpTokenAddr, dbTokenAddr, cCollateralManager.address);
+    await pool.initialize(CMAddr, portalAddr, traderAddr);
     console.log("CLendingPool initialized.");
 
-    // Initialize CAddresses with contract addresses
-    await cAddresses.setAddress("GoodNft", goodNft.address);
-    await cAddresses.setAddress("BadNft", badNft.address);
-    await cAddresses.setAddress("CAddresses", cAddresses.address);
-    await cAddresses.setAddress("NftValues", nftValues.address);
-    await cAddresses.setAddress("CCollateralManager", cCollateralManager.address);
-    await cAddresses.setAddress("NftTrader", nftTrader.address);
-    await cAddresses.setAddress("CLendingPool", cLendingPool.address);
+    // Initialize UserPortal
+    await portal.initialize(CMAddr, poolAddr, traderAddr);
+    console.log("UserPortal initialized.");
 
-    console.log("CAddresses initialized with contract addresses!");
+    // Initialize CAddresses with contract addresses
+    await addresses.setAddress("GoodNft", gNftAddr);
+    await addresses.setAddress("BadNft", bNftAddr);
+    await addresses.setAddress("Addresses", addressesAddr);
+    await addresses.setAddress("NftValues", nftValuesAddr);
+    await addresses.setAddress("CollateralManager", CMAddr);
+    await addresses.setAddress("NftTrader", traderAddr);
+    await addresses.setAddress("LendingPool", poolAddr);
+    await addresses.setAddress("UserPortal", portalAddr);
+    await addresses.setAddress("deployer", deployer.address);
+
+    console.log("Addresses contract initialized with contract addresses!");
 
     // Log final contract addresses
     console.log({
-        GoodNft: goodNft.address,
-        BadNft: badNft.address,
-        CAddresses: cAddresses.address,
-        NftValues: nftValues.address,
-        CCollateralManager: cCollateralManager.address,
-        NftTrader: nftTrader.address,
-        CLendingPool: cLendingPool.address,
+        deployer: deployer.address,
+        GoodNft: gNftAddr,
+        BadNft: bNftAddr,
+        CAddresses: addressesAddr,
+        NftValues: nftValuesAddr,
+        CCollateralManager: CMAddr,
+        NftTrader: traderAddr,
+        CLendingPool: poolAddr,
+        UserPortal: portalAddr,
     });
 
     const filePath = path.join(__dirname, "deployedAddresses.json");

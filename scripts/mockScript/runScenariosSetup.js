@@ -29,16 +29,19 @@ async function main() {
     console.log("Using lender1:", lender1.address);
 
     // Load deployed contracts
-    const GoodNft = await ethers.getContractAt("GoodNft", deployedAddresses.GoodNft, deployer);
+    const Portal = await ethers.getContractAt("UserPortal", deployedAddresses.UserPortal);
+    const Addresses = await ethers.getContractAt("Addresses", deployedAddresses.CAddresses);
+    const GNft = await ethers.getContractAt("GoodNFT", deployedAddresses.GoodNft, deployer);
+    const BNft = await ethers.getContractAt("BadNFT", deployedAddresses.BadNft, deployer);
     const NftValues = await ethers.getContractAt("NftValues", deployedAddresses.NftValues);
-    const CLendingPool = await ethers.getContractAt("CLendingPool", deployedAddresses.CLendingPool);
-    const collateralManager = await ethers.getContractAt("CCollateralManager", deployedAddresses.CCollateralManager);
-    const nftTrader = await ethers.getContractAt("NftTrader", deployedAddress.NftTrader)
+    const LendingPool = await ethers.getContractAt("LendingPool", deployedAddresses.CLendingPool);
+    const CollateralManager = await ethers.getContractAt("CollateralManager", deployedAddresses.CCollateralManager);
+    const NftTrader = await ethers.getContractAt("NftTrader", deployedAddresses.NftTrader)
 
     // Example: Mint NFTs for lender1 and borrower1
     console.log("Minting NFTs...");
-    await GoodNft.connect(deployer).mint(borrower1.address);
-    await GoodNft.connect(deployer).mint(borrower2.address);
+    await GNft.connect(deployer).mint(borrower1.address);
+    await GNft.connect(deployer).mint(borrower2.address);
     console.log(`Minted NFTs for borrower1 (${borrower1.address}) and borrower2 (${borrower2.address}).`);
 
     // Example: calling oracle to update floor price

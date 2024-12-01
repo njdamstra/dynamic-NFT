@@ -29,7 +29,7 @@ contract UserPortal is ReentrancyGuard {
         owner = msg.sender;
     }
 
-    function initializer(address _CMAddr, address _LPAddr, address _NTAddr) external onlyOwner {
+    function initialize(address _CMAddr, address _LPAddr, address _NTAddr) external onlyOwner {
         CMAddr = _CMAddr;
         LPAddr = _LPAddr;
         NTAddr = _NTAddr;
