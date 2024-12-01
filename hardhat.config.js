@@ -1,7 +1,7 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
-require("@openzeppelin/hardhat-upgrades");
-require("@nomicfoundation/hardhat-foundry");
+// require("@openzeppelin/hardhat-upgrades");
+// require("@nomicfoundation/hardhat-foundry");
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
