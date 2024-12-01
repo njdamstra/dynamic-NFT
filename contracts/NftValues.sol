@@ -59,7 +59,7 @@ contract NftValues {
     function addCollection(address collectionAddr) external onlyOwner {
         require(collectionAddr != address(0), "Invalid collection address");
         if (collectionIndex[collectionAddr] != 0 && (
-            collectionList.length != 0 || collectionList[collectionIndex[collectionAddr]].collectionAddr == collectionAddr
+            collectionList.length != 0 || collectionList[collectionIndex[collectionAddr]] == collectionAddr
             )) {
                 return; // collection already in list
             }
@@ -74,7 +74,7 @@ contract NftValues {
     function removeCollection(address collectionAddr) external onlyOwner {
         require(collectionAddr != address(0), "Invalid collection address");
         uint256 index = collectionIndex[collectionAddr];
-        if (index >= collectionList.length && collectionList[index].collectionAddr != collectionAddr) {
+        if (index >= collectionList.length && collectionList[index] != collectionAddr) {
             return; // collection is not part of the list
         }
         //TODO revise
@@ -89,7 +89,7 @@ contract NftValues {
         if (index != lastIndex) {
             NftCollection memory lastCollection = collectionList[lastIndex];
             collectionList[index] = lastCollection; // Overwrite the removed element with the last element
-            collectionIndex[lastCollection.collectionAddr] = index; // Update the index of the moved element
+            collectionIndex[lastCollection] = index; // Update the index of the moved element
         }
         // Remove the last element
         collectionList.pop();
@@ -118,7 +118,7 @@ contract NftValues {
     function updateFloorPrice(address collectionAddr, uint256 newFloorPrice) external onlyOwner {
         require(collectionAddr != address(0), "Invalid collection address");
         uint256 index = collectionIndex[collectionAddr];
-        if (index >= collectionList.length && collectionList[index].collectionAddr != collectionAddr) {
+        if (index >= collectionList.length && collectionList[index] != collectionAddr) {
             return; // not in the list of collections
         }
         if (newFloorPrice <= 0) {

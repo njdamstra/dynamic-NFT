@@ -10,10 +10,10 @@ import {ICollateralManager} from "../interfaces/ICollateralManager.sol";
 
 
 contract LendingPool is ReentrancyGuard {
-    address[] lenders;
-    address[] borrowers;
-    mapping(address => uint) borrowerIndex;
-    mapping(address => uint) lenderIndex;
+    address[] public lenders;
+    address[] public borrowers;
+    mapping(address => uint) public borrowerIndex;
+    mapping(address => uint) public lenderIndex;
 
     mapping(address => uint256) public totalSuppliedUsers; // Tracks ETH (without interest) supplied by lenders
     mapping(address => uint256) public totalBorrowedUsers; // Tracks ETH (with interest) currently borrowed by users

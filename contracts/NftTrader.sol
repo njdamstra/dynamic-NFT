@@ -67,8 +67,10 @@ contract NftTrader {
     function addListing(uint256 basePrice, address collection, uint256 tokenId, bool auction, uint256 duration, address originalOwner) public onlyCollateralManager {
         IERC721 nftContract = IERC721(collection);
 
+
         require(nftContract.ownerOf(tokenId) == collateralManagerAddr, "[*ERROR*] collateral manager must own the NFT!");
-        require(nftContract.isApproved(collateralManagerAddr, address(this), tokenId), "[*ERROR*] Contract is not approved by collateral manager!"); // might delete this so that approval only happens when purchased
+        //TODO NATE is this correct/necessary?
+        //require(nftContract.isApproved(collateralManagerAddr, address(this), tokenId), "[*ERROR*] Contract is not approved by collateral manager!"); // might delete this so that approval only happens when purchased
 
         // check for no redundant listings currently;
         if (isListed(collection, tokenId)) {
@@ -132,7 +134,7 @@ contract NftTrader {
         // if no bid made, change buyNow bool from false to true
         require(isListed(collection, tokenId), "Token not listed for sale");
         Listing storage item = listings[collection][tokenId];
-        require(item.auctionEnd <= block.timestamp, "Auction has not ended");
+        require(item.auctionEnds <= block.timestamp, "Auction has not ended");
         // now we know auction can be ended
         address winner = item.highestBidder;
         if (winner == address(0)) {
@@ -170,7 +172,7 @@ contract NftTrader {
         IPool(pool).liquidate(item.originalOwner, collection, tokenId, amount);
         // Remove the listing
         delete listings[collection][tokenId];
-        emit NFTPurchased(collection, tokenId, item.price, buyer);
+        emit NFTPurchased(collection, tokenId, item.basePrice, buyer);
     }
 
     // Withdraw funds NOT NEEDED

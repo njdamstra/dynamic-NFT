@@ -85,7 +85,7 @@ contract CollateralManager {
     }
 
     function calculateHealthFactor(address borrower, uint256 collateralValue) private returns (uint256) {
-        uint256 totalDebt = poolAddr.totalBorrowedUsers[borrower];
+        uint256 totalDebt = iLendingPool.totalBorrowedUsers[borrower];
         if (totalDebt == 0) return type(uint256).max; // Infinite health factor if no debt
         require(collateralValue <= type(uint256).max / 100, "[*ERROR*] Collateral value too high!");
         return (collateralValue * 100) / totalDebt;
@@ -221,7 +221,7 @@ contract CollateralManager {
 
         if (found && newHealthFactor > 120) {
             // update collateral profile
-            Nft[] nftContract = IERC721(collectionAddress);
+            IERC721 nftContract = IERC721(collectionAddress);
             nftContract.transferFrom(address(this), borrower, tokenId);
             _deleteNftFromCollateralProfile(borrower, collectionAddress, tokenId);
         }
@@ -236,7 +236,7 @@ contract CollateralManager {
     }
 
     //TODO NATE get the actual value from oracle nftvalue
-    function getNftValue(address collectionAddress) private returns (uint256) {
+    function getNftValue(address collectionAddress) public returns (uint256) {
         return iNftValues.getFloorPrice(collectionAddress);
     }
 
@@ -288,7 +288,8 @@ contract CollateralManager {
 
     // TODO NATE:
     function registerNft(address collection, uint256 tokenId) private {
-        iNftTrader.addCollection(collection);
+        //iNftTrader.addCollection(collection);
+        return;
     }
 
 
