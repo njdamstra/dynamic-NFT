@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {ILendingPool} from "../interfaces/ILendingPool.sol"
+import {ILendingPool} from "../interfaces/ILendingPool.sol";
 
 contract NftTrader {
     // map original nft contract address to mapping of nftid to Listing struct. // should we not use tokenId instead of nttId as uint256? -F
@@ -22,7 +22,7 @@ contract NftTrader {
     } // TODO: might delete buyNow since it's not necessary
 
 
-    address public collateralManager;
+    address public collateralManagerAddr;
     address public pool;
     uint public numCollections;
     ILendingPool public IPool;
@@ -45,7 +45,7 @@ contract NftTrader {
     }
 
     modifier onlyCollateralManager() {
-        require(msg.sender == collateralManager, "[*ERROR*] Only the collateralManager can call this function!");
+        require(msg.sender == collateralManagerAddr, "[*ERROR*] Only the collateralManager can call this function!");
         _;
     }
 
@@ -69,20 +69,20 @@ contract NftTrader {
     function addListing(uint256 basePrice, address collection, uint256 tokenId, bool auction, uint256 duration, address originalOwner) public onlyCollateralManager {
         IERC721 token = IERC721(collection);
         // Ensure the NFT is owned and approved by the collateralManager
-        require(token.ownerOf(tokenId) == collateralManager, "[*ERROR*] collateral manager must own the NFT!");
-        require(token.isApproved(collateralManager, address(this), tokenId), "[*ERROR*] Contract is not approved by collateral manager!"); // might delete this so that approval only happens when purchased
+        require(token.ownerOf(tokenId) == collateralManagerAddr, "[*ERROR*] collateral manager must own the NFT!");
+        require(token.isApproved(collateralManagerAddr, address(this), tokenId), "[*ERROR*] Contract is not approved by collateral manager!"); // might delete this so that approval only happens when purchased
         // check for no redundant listings currently; 
         if (isListed(collection, tokenId)) {
-            // maybe have an update function that'll only update it's basePrice
+            //TODO maybe have an update function that'll only update it's basePrice
             return;
         }
         // Add the listing
         uint256 timestamp = block.timestamp();
         uint256 auctionEnds = timestamp + duration;
-        listings[collection][tokenId] = Listing(collateralManager, collection, tokenId, basePrice, timestamp, auctionEnds, 0, address(0), !auction, originalOwner);
+        listings[collection][tokenId] = Listing(collateralManagerAddr, collection, tokenId, basePrice, timestamp, auctionEnds, 0, address(0), !auction, originalOwner);
 
         // create a listing event
-        emit NFTListed(collection, tokenId, basePrice, collateralManager, auction, timestamp);
+        emit NFTListed(collection, tokenId, basePrice, collateralManagerAddr, auction, timestamp);
     }
 
     // Delist an NFT 
@@ -130,8 +130,8 @@ contract NftTrader {
         // called only if auction duration has been completed.
         // if there is a bid, automatically transfer NFT to highest bidders address
         // if no bid made, change buyNow bool from false to true
-        require(isListed(collection, tokenId), "Token not listed for sale")
-        Listing storage item = listings[collection][tokenId]
+        require(isListed(collection, tokenId), "Token not listed for sale");
+        Listing storage item = listings[collection][tokenId];
         require(item.auctionEnd <= block.timestamp, "Auction has not ended");
         // now we know auction can be ended
         address winner = item.highestBidder;
@@ -146,7 +146,6 @@ contract NftTrader {
 
         IPool.liquidate(item.originalOwner, collection, tokenId, item.highestBid);
 
-        emit NFTAuctionEnded(collection, tokenId, item.highestBidder, item.highestBid, block.timestamp);
         delete listings[collection][tokenId];
     }
 
@@ -191,7 +190,7 @@ contract NftTrader {
     // helper functions:
 
     // for the liquidator to get the data ?? not necessary
-    function viewListing(address collection, uint256 tokenId) public view returns (struct) {
+    function viewListing(address collection, uint256 tokenId) public view returns (Listing memory) {
         return listings[collection][tokenId];
     }
 
