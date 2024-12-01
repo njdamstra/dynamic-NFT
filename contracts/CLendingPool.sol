@@ -238,14 +238,14 @@ contract LendingPool is ReentrancyGuard {
     // Retrieve user account data including LP and DB tokens
     function getUserAccountData(address user) external view
     returns (
-        uint256 totalDebtETH,
-        uint256 lpTokenBalance,
-        uint256 dbTokenBalance
+        uint256 totalDebt,
+        uint256 netDebt,
+        uint256 totalSupplied,
+
     )
     {
         totalDebtETH = totalBorrowedUsers[user];
-        lpTokenBalance = iLPToken.balanceOf(user);
-        dbTokenBalance = iDBToken.balanceOf(user);
+
     }
 
     function allocateInterest(uint256 amount) private {
