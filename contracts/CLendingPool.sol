@@ -209,6 +209,8 @@ contract LendingPool is ReentrancyGuard {
         // uint256 healthFactor = collateralManager.getHealthFactor(borrower, nftId);
         // require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
         uint256 nftValue = iCollateralManager.getNftValue(collection);
+
+
         // TODO does the trader do the listing??
         iCollateralManager.liquidateNft(borrower, collection, tokenId);
 
@@ -217,7 +219,6 @@ contract LendingPool is ReentrancyGuard {
         uint256 debtReduction = amount > totalDebt ? totalDebt : amount;
         uint256 remainingDebt = totalDebt > debtReduction ? totalDebt - debtReduction : 0;
 
-        iDBToken.burn(borrower, debtReduction);
 
         netBorrowedUsers[borrower] = remainingDebt;
         totalBorrowedUsers[borrower] = remainingDebt;
@@ -227,16 +228,6 @@ contract LendingPool is ReentrancyGuard {
         uint256 profit = amount > totalDebt ? amount - totalDebt : 0;
 
         // Distribute profit as interest
-        uint256 activeTokens = iLPToken.getActiveTokens()();
-        if (activeTokens > 0 && profit > 0) {
-            for (uint256 i = 0; i < activeTokens; i++) {
-                address lender = iLPToken.holderAt(i); // Assumes iLPToken has a holder-tracking feature
-                uint256 lenderShare = (iLPToken.balanceOf(lender) * profit) / activeTokens;
-                iLPToken.mint(lender, lenderShare);
-            }
-        } else {
-            poolBalance += profit; // If no lenders, add profit to pool balance
-        }
 
         netBorrowedPool -= totalDebt;
         totalBorrowedPool -= totalDebt;
