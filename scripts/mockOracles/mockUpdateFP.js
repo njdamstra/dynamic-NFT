@@ -18,9 +18,16 @@ const deployerWallet = new ethers.Wallet(wallets.find(w => w.name === "deployer"
 
 const contract = new ethers.Contract(CONTRACT_ADDRESS, nftValuesABI, deloyerWallet);
 
+// USAGE: Set New Floor Prices that this will iterate through:
+const collectionMap = new Map();
+collectionMap.set(deployedAddresses.GoodNft, [10, 20, 23])
+collectionMap.set(deployedAddresses.BadNft, [33, 1, 20])
+index = 0;
+// END USAGE
+
 // Mock function to generate or fetch floor price
 async function fetchMockFloorPrice(collectionAddr) {
-    const floorPrice = Math.floor(Math.random() * 10) + 1; // Random floor price between 1 and 10 ETH
+    const floorPrice = collectionMap.get(collectionAddr)[index]; // Random floor price between 1 and 10 ETH
     console.log(`Mocked floor price for ${collectionAddr}: ${floorPrice} ETH`);
     return ethers.parseEther(floorPrice.toString()); // Convert to WEI
 }
@@ -46,6 +53,7 @@ async function updateFloorPrices() {
                 console.error(`Error updating floor price for ${collection}:`, error.message);
             }
         }
+        index++;
     } catch (error) {
         console.error("Error fetching collections:", error.message);
     }

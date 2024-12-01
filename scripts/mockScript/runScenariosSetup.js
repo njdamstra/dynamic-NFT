@@ -36,7 +36,45 @@ async function main() {
     const NftValues = await ethers.getContractAt("NftValues", deployedAddresses.NftValues);
     const LendingPool = await ethers.getContractAt("LendingPool", deployedAddresses.CLendingPool);
     const CollateralManager = await ethers.getContractAt("CollateralManager", deployedAddresses.CCollateralManager);
-    const NftTrader = await ethers.getContractAt("NftTrader", deployedAddresses.NftTrader)
+    const NftTrader = await ethers.getContractAt("NftTrader", deployedAddresses.NftTrader);
+    const MockOracle = await ethers.getContractAt("MockOracle", deployedAddresses.MockOracle);
+
+    // Initialize NftValues:
+    /////// TODO: CHANGE BOOL TO DETERMINE IF YOU WANT TO RUN ON CHAIN (TRUE) ORACLE OR OFF CHAIN ** ///////
+    const useOnChainOracle = true;
+    await NftValues.initialize(CMAddr, useOnChainOracle, deployedAddresses.MockOracle);
+    console.log("NftValues initialized.");
+
+    /////// TODO: SET COLLECTION PRICES //////
+    // IF TRUE (using on chain oracle MockOracle)
+    if (useOnChainOracle) {
+        const initial_GNft_FP = 10; // set initial goodNft collections floor price
+        const GNft_safe = true; // set if goodNft collection is a safe collection and that borrowers can use it!
+        await MockOracle.manualSetCollection(deployedAddresses.GoodNft, initial_GNft_FP, GNft_safe);
+
+        const initial_BNft_FP = 10; // set initial goodNft collections floor price
+        const BNft_safe = true; // set if goodNft collection is a safe collection and that borrowers can use it!
+        await MockOracle.manualSetCollection(deployedAddresses.BadNft, initial_BNft_FP, BNft_safe);
+
+        ///// ** WHAT TO DO LATER **
+
+        // Change collections FP:
+        // await MockOracle.manualUpdateFloorPrice(deployedAddresses.Nft, newFloorPrice);
+        
+        // have MockOracle update NftValues collections:
+        // await MockOracle.updateAllFloorPrices();
+    // IF FALSE (using off chain oracle (real world))
+    } else if (!useOnChainOracle) {
+        // 1) go to mockRequestFP.js and update safety of the collection and initial FP
+        // 2) go to mockUpdateFP.js and change the FP that'll be iterated through one by one everytime you call:
+        // console.log("Updating floor prices using mockUpdateFP.js...");
+        // try {
+        //     execSync("node mockScripts/mockUpdateFP.js", { stdio: "inherit" });
+        //     console.log("Floor prices updated successfully!");
+        // } catch (error) {
+        //     console.error("Error calling mockUpdateFP.js:", error.message);
+    }
+    
 
     // Example: Mint NFTs for lender1 and borrower1
     console.log("Minting NFTs...");

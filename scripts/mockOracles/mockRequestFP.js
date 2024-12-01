@@ -16,17 +16,24 @@ const nftValuesAddress = deployedAddresses.NftValues;
 // Create contract instance
 const nftValuesContract = new ethers.Contract(nftValuesAddress, nftValuesABI, deployer);
 
-// Mock floor prices for testing
-const floorPrices = [10, 5, 8, 15, 20, 30, 1, 3];
-let index = 0;
+// USAGE: If using off chain oracle, set initial mock floor prices and safe status for each Nft Collection:
+const collectionMap = new Map();
+collectionMap.set(deployedAddresses.GoodNft, [10, true]);
+collectionMap.set(deployedAddresses.BadNft, [15, true]);
 
 // Mock function to fetch or generate a floor price
 async function fetchMockFloorPrice(collectionAddr) {
     // Optionally use pre-defined or random floor prices
-    const floorPrice = floorPrices[index % floorPrices.length]; // Cycles through the mock prices
-    index++;
+    const floorPrice = collectionMap.get(collectionAddr)[0];
     console.log(`Mocked floor price for ${collectionAddr}: ${floorPrice} ETH`);
     return ethers.parseEther(floorPrice.toString()); // Convert to WEI
+}
+async function fetchMockSafety(collectionAddr) {
+    if (collectionMap.has(collectionAddr)) {
+        return collectionMap.get(collectionAddr)[1];
+    } else {
+        return false;
+    }
 }
 
 // Listen for FloorPriceRequest events and handle them
@@ -39,9 +46,12 @@ async function listenForRequests() {
         // Fetch the mock floor price
         const floorPrice = await fetchMockFloorPrice(collectionAddr);
 
+        // Fetch the mock safe nft flag
+        const safe = await fetchMockSafety(collectionAddr);
+        console.log(`Mocked safe ranking for ${collectionAddr}: ${safe}`);
         // Update the floor price in the contract
         try {
-            const tx = await nftValuesContract.updateFloorPrice(collectionAddr, floorPrice);
+            const tx = await nftValuesContract.updateCollection(collectionAddr, floorPrice, safe);
             console.log(`Floor price updated successfully! Transaction Hash: ${tx.hash}`);
         } catch (error) {
             console.error("Error updating floor price:", error.message);

@@ -83,9 +83,9 @@ async function main() {
     // Initialize contracts
     console.log("Initializing contracts...");
 
-    // Initialize NftValues
-    await nftValues.initialize(CMAddr);
-    console.log("NftValues initialized.");
+    // Initialize MockOracle:
+    await mockOracle.initialize(nftValuesAddr);
+    console.log("MockOracle initialized.");
 
     // Initialize CCollateralManager
     await collateralManager.initialize(
