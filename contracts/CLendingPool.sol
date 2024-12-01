@@ -236,16 +236,15 @@ contract LendingPool is ReentrancyGuard {
     }
 
     // Retrieve user account data including LP and DB tokens
-    function getUserAccountData(address user) external view
-    returns (
+    function getUserAccountData(address user) public view returns (
         uint256 totalDebt,
         uint256 netDebt,
-        uint256 totalSupplied,
-
-    )
-    {
-        totalDebtETH = totalBorrowedUsers[user];
-
+        uint256 totalSupplied
+    ) {
+        totalDebt = totalBorrowedUsers[user];
+        netDebt = netBorrowedUsers[user];
+        totalSupplied = totalSuppliedUsers[user];
+        return (totalDebt, netDebt, totalSupplied);
     }
 
     function allocateInterest(uint256 amount) private {
@@ -341,4 +340,7 @@ contract LendingPool is ReentrancyGuard {
         delete totalBorrowedUsers[borrower];
     }
 
+    function getBorrowersList() public view returns (address[] memory) {
+        return borrowers;
+    }
 }
