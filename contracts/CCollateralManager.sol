@@ -42,19 +42,19 @@ contract CollateralManager {
 
     // Initialize function to set dependencies
     function initialize(address _pool, address _nftTrader, address _nftValues, address _portal) external onlyOwner {
-        require(pool == address(0), "Already initialized");
+        require(poolAddr == address(0), "Already initialized");
         require(_pool != address(0) && _nftTrader != address(0) && _nftValues != address(0), "Invalid addresses");
         portal = _portal;
-        pool = _pool;
+        poolAddr = _pool;
         nftTraderAddress = _nftTrader;
         nftValuesAddress = _nftValues;
         iNftTrader = INftTrader(nftTraderAddress);
         iNftValues = INftValues(nftValuesAddress);
-        iPool = ILendingPool(pool);
+        iLendingPool = ILendingPool(poolAddr);
     }
 
     modifier onlyPool() {
-        require(msg.sender == pool, "[*ERROR*] Only the pool can call this function!");
+        require(msg.sender == poolAddr, "[*ERROR*] Only the pool can call this function!");
         _;
     }
 
