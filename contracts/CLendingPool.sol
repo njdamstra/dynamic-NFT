@@ -10,9 +10,9 @@ import {ICollateralManager} from "../interfaces/ICollateralManager.sol";
 
 
 contract LendingPool is ReentrancyGuard {
-    address[] lenderList;
-    address[] borrowerList;
-    mapping(address => uint) borrowIndex;
+    address[] lenders;
+    address[] borrowers;
+    mapping(address => uint) borrowerIndex;
     mapping(address => uint) lenderIndex;
 
     mapping(address => uint256) public totalSuppliedUsers; // Tracks ETH (without interest) supplied by lenders
@@ -253,8 +253,8 @@ contract LendingPool is ReentrancyGuard {
 
     function allocateInterest(uint256 amount) private {
         uint256 totalSupplied = getTotalSupplied();
-        for (uint256 i = 0; i < lenderList.length; i++) {
-            address lender = lenderList[i];
+        for (uint256 i = 0; i < lenders.length; i++) {
+            address lender = lenders[i];
             uint256 lenderBalance = totalSuppliedUsers[lender];
 
             if (totalSupplied > 0) {
@@ -266,8 +266,8 @@ contract LendingPool is ReentrancyGuard {
 
     function getTotalSupplied() private view returns (uint256) {
         uint256 total = 0;
-        for (uint256 i = 0; i < lenderList.length; i++) {
-            total += totalSuppliedUsers[lenderList[i]];
+        for (uint256 i = 0; i < lenders.length; i++) {
+            total += totalSuppliedUsers[lenders[i]];
         }
         return total;
     }
@@ -277,8 +277,8 @@ contract LendingPool is ReentrancyGuard {
             delete totalSuppliedUsers[lender];
             return false;
         }
-        for (uint256 i = 0; i < lenderList.length; i++) {
-            if (lenderList[i] == lender) {
+        for (uint256 i = 0; i < lenders.length; i++) {
+            if (lenders[i] == lender) {
                 return true;
             }
         }
@@ -290,8 +290,8 @@ contract LendingPool is ReentrancyGuard {
             delete totalBorrowedUsers[borrower];
             return false;
         }
-        for (uint256 i = 0; i < borrowerList.length; i++) {
-            if (borrowerList[i] == borrower) {
+        for (uint256 i = 0; i < borrowers.length; i++) {
+            if (borrowers[i] == borrower) {
                 return true;
             }
         }
@@ -299,72 +299,74 @@ contract LendingPool is ReentrancyGuard {
     }
 
     function getBorrowerList() public view returns (address[] memory) {
-        return borrowerList;
+        return borrowers;
     }
 
     function getLenderList() public view returns (address[] memory) {
-        return lenderList;
+        return lenders;
     }
 
-    function addBorrower(address borrower) external {
+    function addBorrowerIfNotExists(address borrower) external {
         require(borrower != address(0), "Invalid collection address");
         if (borrowerIndex[borrower] != 0 && (
-            borrowerList.length != 0 || borrowerList[borrowerIndex[borrower]] == borrower
+            borrowers.length != 0 || borrowers[borrowerIndex[borrower]] == borrower
             )) {
                 return; // collection already in list
             }
         // Add the new collection
-        borrowerList.push(borrower);
-        borrowerIndex[borrower] = borrowerList.length - 1; // Store the index of the collection
+        borrowers.push(borrower);
+        borrowerIndex[borrower] = borrowers.length - 1; // Store the index of the collection
     }
 
     // Remove a collection from the list
-    function removeBorrower(address borrower) external {
+    function deleteBorrower(address borrower) external {
         require(borrower != address(0), "Invalid collection address");
         uint256 index = borrowerIndex[borrower];
-        if (index >= borrowerList.length && borrowerList[index] != borrower) {
+        if (index >= borrowers.length && borrowers[index] != borrower) {
             return; // collection is not part of the list
         }
         // Move the last element into the place of the element to remove
-        uint256 lastIndex = borrowerList.length - 1;
+        uint256 lastIndex = borrowers.length - 1;
         if (index != lastIndex) {
-            address memory lastBorrower = borrowerList[lastIndex];
-            borrowerList[index] = lastBorrower; // Overwrite the removed element with the last element
+            address memory lastBorrower = borrowers[lastIndex];
+            borrowers[index] = lastBorrower; // Overwrite the removed element with the last element
             borrowerIndex[lastBorrower] = index; // Update the index of the moved element
         }
         // Remove the last element
-        borrowerList.pop();
+        delete totalBorrowedUsers[borrower];
+        delete netBorrowedUsers[borrower];
         delete borrowerIndex[borrower]; // Delete the index mapping for the removed collection
+        borrowers.pop();
     }
 
-    function addLender(address lender) external {
+    function addLenderIfNotExists(address lender) external {
         require(lender != address(0), "Invalid collection address");
         if (lenderIndex[lender] != 0 && (
-            lenderList.length != 0 || lenderList[lenderIndex[lender]] == lender
+            lenders.length != 0 || lenders[lenderIndex[lender]] == lender
             )) {
                 return; // collection already in list
             }
         // Add the new collection
-        lenderList.push(lender);
-        lenderIndex[lender] = lenderList.length - 1; // Store the index of the collection
+        lenders.push(lender);
+        lenderIndex[lender] = lenders.length - 1; // Store the index of the collection
     }
 
     // Remove a collection from the list
-    function removeLender(address lender) external {
+    function deleteLender(address lender) external {
         require(lender != address(0), "Invalid collection address");
         uint256 index = lenderIndex[lender];
-        if (index >= lenderList.length && lenderList[index] != lender) {
+        if (index >= lenders.length && lenders[index] != lender) {
             return; // collection is not part of the list
         }
         // Move the last element into the place of the element to remove
-        uint256 lastIndex = lenderList.length - 1;
+        uint256 lastIndex = lenders.length - 1;
         if (index != lastIndex) {
-            address memory lastLender = lenderList[lastIndex];
-            lenderList[index] = lastLender; // Overwrite the removed element with the last element
+            address memory lastLender = lenders[lastIndex];
+            lenders[index] = lastLender; // Overwrite the removed element with the last element
             lenderIndex[lastLender] = index; // Update the index of the moved element
         }
         // Remove the last element
-        lenderList.pop();
+        lenders.pop();
         delete lenderIndex[lender]; // Delete the index mapping for the removed collection
     }
 }
