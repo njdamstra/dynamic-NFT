@@ -49,7 +49,7 @@ contract LendingPool is ReentrancyGuard {
         owner = msg.sender;
     }
 
-    function initialize(address _collateralManagerAddr) external onlyOwner {
+    function initialize(address _collateralManagerAddr, address _portal, address _trader) external onlyOwner {
 
         paused = false;
         collateralManagerAddr = _collateralManagerAddr;
@@ -106,7 +106,6 @@ contract LendingPool is ReentrancyGuard {
     // Allows users to supply ETH to the pool
     function supply(address lender, uint256 amount) external payable onlyPortal {
         require(msg.value == amount, "[*ERROR*] Incorrect amount of ETH supplied!");
-    function supply(address lender, uint256 amount) external payable {
         require(amount > 0, "[*ERROR*] Cannot supply zero ETH!");
 
         if (isLender(lender)) {
@@ -131,7 +130,6 @@ contract LendingPool is ReentrancyGuard {
         // Update the pool balance
         poolBalance -= amount;
 
-
         //update suppliedUsers
         totalSuppliedUsers[lender] -= amount;
 
@@ -147,32 +145,41 @@ contract LendingPool is ReentrancyGuard {
 
     // Allows users to borrow ETH from the pool using NFT collateral
     function borrow(address borrower, uint256 amount) external nonReentrant whenNotPaused onlyPortal {
-        require(netLoan <= poolBalance, "[*ERROR*] Insufficient pool liquidity!");
-        //TODO check hf for Loan and Existing Collateral
+        require(amount <= poolBalance, "[*ERROR*] Insufficient pool liquidity!");
+        require(iCollateralManager.getHealthFactor(borrower) > 150, "[*ERROR*] Health factor too low to borrow more money!");
 
         // calculate interest as 10% of borrowed amount
-        uint256 netLoan = amount;
         uint256 interest = (amount * 10) / 100; // 10% interest
-        uint256 totalLoan = amount + interest;
+        uint256 newLoan = amount + interest;
+        uint256 oldTotalDebt = totalBorrowedUsers[borrower];
+        uint256 newTotalDebt = oldTotalDebt + newLoan;
 
-        //TODO get the NFT value & ensure HF
+        // check hf for new loan
+        uint256 collateralValue = iCollateralManager.getCollateralValue(borrower);
+        uint256 newHealthFactor = calculateHealthFactor(borrower,newTotalDebt, collateralValue);
 
+        require(newHealthFactor > 150, "[*ERROR*] New health factor too low to borrow more money!");
 
-        // mint and give debt tokens to borrower
-        iDBToken.mint(borrower, totalLoan);
+        poolBalance -= amount;
+
+        if (isBorrower(borrower)) {
+            totalBorrowedUsers[borrower] += newLoan;
+        } else {
+            addBorrowerIfNotExists(borrower, newLoan);
+        }
 
         // send eth to borrower
-        (bool success, ) = borrower.call{value: netLoan}("");
+        (bool success, ) = borrower.call{value: amount}("");
         require(success, "[*ERROR*] Transfer of debt tokens failed!");
-
-        //update state of lend pool
-        poolBalance -= netLoan;
-        netBorrowedPool += netLoan;
-        totalBorrowedPool += totalLoan;
-        netBorrowedUsers[borrower] += netLoan;
-        totalBorrowedUsers[borrower] += totalLoan;
-        // create a borrow event
+        
         emit Borrowed(borrower, amount);
+    }
+
+    // @Helper
+    function calculateHealthFactor(address borrower, uint256 debtValue, uint256 collateralValue) private returns (uint256) {
+        if (debtValue == 0) return type(uint256).max; // Infinite health factor if no debt
+        require(collateralValue <= type(uint256).max / 100, "[*ERROR*] Collateral value too high!");
+        return (collateralValue * 100) / debtValue;
     }
 
     // Allows users to repay borrowed ETH with interest

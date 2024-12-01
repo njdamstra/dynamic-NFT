@@ -88,11 +88,12 @@ contract CollateralManager {
     }
 
     function calculateHealthFactor(address borrower, uint256 collateralValue) private returns (uint256) {
-        uint256 totalDebt = iPool.totalBorrowedUsers(borrower);
+        uint256 totalDebt = pool.totalBorrowedUsers[borrower];
         if (totalDebt == 0) return type(uint256).max; // Infinite health factor if no debt
         require(collateralValue <= type(uint256).max / 100, "[*ERROR*] Collateral value too high!");
         return (collateralValue * 100) / totalDebt;
     }
+
 
     // Get a list of all liquidatable NFTs for a user
     function getliquidatableCollateral(address borrower) public returns (Nft[]) {
@@ -160,8 +161,7 @@ contract CollateralManager {
                 collateralProfile.nftList[i] = collateralProfile.nftList[length - 1];
                 collateralProfile.nftList.pop(); // Remove the last element
                 collateralProfile.nftListLength--; // Decrement the count
-                // deregister nft from nft's NftValues keeps track of.
-                deregisterNft(collectionAddress, tokenId);
+
                 break;
             }
         }
