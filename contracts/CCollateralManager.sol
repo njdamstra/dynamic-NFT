@@ -5,8 +5,9 @@ import {LendingPool} from "./CLendingPool.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./NftValues.sol";
 import "./NftTrader.sol";
-import {INftTrader} from "../interfaces/INftTrader.sol";
-import {INftValues} from "../interfaces/INftValues.sol";
+import {INftTrader} from "./interfaces/INftTrader.sol";
+import {INftValues} from "./interfaces/INftValues.sol";
+import {ILendingPool} from "./interfaces/ILendingPool.sol";
 
 contract CollateralManager {
     struct CollateralProfile {
@@ -41,19 +42,19 @@ contract CollateralManager {
 
     // Initialize function to set dependencies
     function initialize(address _pool, address _nftTrader, address _nftValues, address _portal) external onlyOwner {
-        require(poolAddr == address(0), "Already initialized");
+        require(pool == address(0), "Already initialized");
         require(_pool != address(0) && _nftTrader != address(0) && _nftValues != address(0), "Invalid addresses");
         portal = _portal;
-        poolAddr = _pool;
+        pool = _pool;
         nftTraderAddress = _nftTrader;
         nftValuesAddress = _nftValues;
         iNftTrader = INftTrader(nftTraderAddress);
         iNftValues = INftValues(nftValuesAddress);
-        iLendingPool = ILendingPool(poolAddr);
+        iPool = ILendingPool(pool);
     }
 
     modifier onlyPool() {
-        require(msg.sender == poolAddr, "[*ERROR*] Only the pool can call this function!");
+        require(msg.sender == pool, "[*ERROR*] Only the pool can call this function!");
         _;
     }
 
