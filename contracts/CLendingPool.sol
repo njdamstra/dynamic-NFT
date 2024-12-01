@@ -275,29 +275,25 @@ contract LendingPool is ReentrancyGuard {
     }
 
     function isLender(address lender) public view returns (bool) {
+        if (lenderIndex[lender] == address(0)) {
+            return false;
+        }
         if (totalSuppliedUsers[lender] == 0) {
             delete totalSuppliedUsers[lender];
             return false;
         }
-        for (uint256 i = 0; i < lenders.length; i++) {
-            if (lenders[i] == lender) {
-                return true;
-            }
-        }
-        return false;
+        return true;
     }
 
     function isBorrower(address borrower) public view returns (bool) {
+        if (borrowerIndex[borrower] == address(0)) {
+            return false;
+        }
         if (totalBorrowedUsers[borrower] == 0) {
             delete totalBorrowedUsers[borrower];
             return false;
         }
-        for (uint256 i = 0; i < borrowers.length; i++) {
-            if (borrowers[i] == borrower) {
-                return true;
-            }
-        }
-        return false;
+        return true;
     }
 
     function getBorrowerList() public view returns (address[] memory) {
