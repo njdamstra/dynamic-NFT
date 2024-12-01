@@ -129,7 +129,7 @@ contract CollateralManager {
     }
 
     function updateAllLiquidatableCollateral() external {
-        for (uint 1 = 0; i < borrowerList.length; i++) {
+        for (uint256 i = 0; i < borrowerList.length; i++) {
             address memory borrower = borrowerList[i];
             updateLiquidatableCollateral(borrower);
         }
@@ -192,6 +192,7 @@ contract CollateralManager {
         
         IERC721 nftContract = IERC721(collectionAddress);
         nftContract.transferFrom(portal, address(this), tokenId);
+
         collateralProfile.nftList.push(Nft(collectionAddress, tokenId, nftContract,false));
         collateralProfile.nftListLength++;
         registerNft(collectionAddress, tokenId); // sends to NftValues to add to list of NFTs it keeps track of

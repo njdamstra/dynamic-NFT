@@ -20,13 +20,16 @@ contract UserPortal is ReentrancyGuard {
 
     address public owner;
 
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Caller is not the owner");
+        _;
+    }
+
     constructor () {
         owner = msg.sender;
     }
 
-
-
-    function initializer(address _CMAddr, address _LPAddr, address _NFTAddr) external onlyOwner {
+    function initializer(address _CMAddr, address _LPAddr, address _NTAddr) external onlyOwner {
         CMAddr = _CMAddr;
         LPAddr = _LPAddr;
         NTAddr = _NTAddr;
@@ -51,7 +54,7 @@ contract UserPortal is ReentrancyGuard {
     }
 
 
-    function withdraw(uint256 amount) external nonRentrant whenNotPaused {
+    function withdraw(uint256 amount) external nonReentrant {
         iPool.withdraw(msg.sender, amount);
     }
 
@@ -68,13 +71,13 @@ contract UserPortal is ReentrancyGuard {
         nft.safeTransferFrom(msg.sender, address(this), tokenId);
 
         // Approve CollateralManager to transfer the NFT
-        nft.approve(collateralManager, tokenId);
+        nft.approve(iCollateralManager, tokenId);
 
         // Call addCollateral on CollateralManager
-        ICollateralManager(collateralManager).addCollateral(msg.sender, collection, tokenId);
+        ICollateralManager(iCollateralManager).addCollateral(msg.sender, collection, tokenId);
     }
     
-    function borrow(uint256 amount) external nonReentrant whenNotPaused {
+    function borrow(uint256 amount) external nonReentrant {
         iPool.borrow(msg.sender, amount);
     }
 
