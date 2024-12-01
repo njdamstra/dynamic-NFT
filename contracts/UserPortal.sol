@@ -47,12 +47,12 @@ contract UserPortal is ReentrancyGuard {
         require(msg.value == amount, "Incorrect ETH amount sent!");
 
         // Forward ETH to LendingPool and call `supply`
-        iPool.supply{value: amount}(amount);
+        iPool.supply{value: amount}(msg.sender, amount);
     }
 
 
     function withdraw(uint256 amount) external nonRentrant whenNotPaused {
-        iPool.withdraw(amount);
+        iPool.withdraw(msg.sender, amount);
     }
 
 
@@ -71,24 +71,25 @@ contract UserPortal is ReentrancyGuard {
         nft.approve(collateralManager, tokenId);
 
         // Call addCollateral on CollateralManager
-        ICollateralManager(collateralManager).addCollateral(collection, tokenId);
+        ICollateralManager(collateralManager).addCollateral(msg.sender, collection, tokenId);
     }
     
     function borrow(uint256 amount) external nonReentrant whenNotPaused {
-        iPool.borrow(amount);
+        iPool.borrow(msg.sender, amount);
     }
 
     function repay(uint256 amount) external payable {
         require(msg.value == amount, "Incorrect ETH amount sent!");
-        iPool.repay{value: amount}(amount);
+        iPool.repay{value: amount}(msg.sender, amount);
     }
 
     function redeemCollateral(address collection, uint256 tokenId) external nonReentrant {
         // Call redeemCollateral on CollateralManager
+        
         iCollateralManager.redeemCollateral(msg.sender, collection, tokenId);
 
         // Transfer NFT back to the user
-        IERC721(collection).safeTransferFrom(address(this), msg.sender, tokenId);
+        // IERC721(collection).safeTransferFrom(address(this), msg.sender, tokenId);
     }
 
 
@@ -98,14 +99,18 @@ contract UserPortal is ReentrancyGuard {
         require(msg.value > 0, "Bid amount must be greater than 0");
 
         // Forward the ETH and call placeBid on NftTrader
-        iTrader.placeBid{value: msg.value}(collection, tokenId);
+        iTrader.placeBid{value: msg.value}(msg.sender, collection, tokenId);
     }
 
     function purchase(address collection, uint256 tokenId) external payable {
         require(msg.value > 0, "Purchase amount must be greater than 0");
 
         // Forward the ETH and call purchase on NftTrader
-        iTrader.purchase{value: msg.value}(collection, tokenId);
+        iTrader.purchase{value: msg.value}(msg.sender, collection, tokenId);
+    }
+
+    function endAuction(address collection, uint256 tokenId) external {
+        iTrader.endAuction(collection, tokenId);
     }
 
 

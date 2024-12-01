@@ -2,14 +2,14 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {ILendingPool} from "../interfaces/ILendingPool.sol";
+import {ILendingPool} from "../interfaces/ILendingPool.sol"
 
 contract NftTrader {
     // map original nft contract address to mapping of nftid to Listing struct. // should we not use tokenId instead of nttId as uint256? -F
     mapping(address => mapping(uint256 => Listing)) public listings;
     // Listing struct has the price and seller (collateralManager contract) of the nft to be liquidated
     struct Listing {
-        address seller; // in the case of one lending pool, this will always be the same (CM)
+        address seller; // in the case of one llending pool, this will always be the same (CM)
         address collection;
         uint256 tokenId;
         uint256 basePrice; // first bid has to be at least this amount
@@ -22,26 +22,40 @@ contract NftTrader {
     } // TODO: might delete buyNow since it's not necessary
 
 
-    address public collateralManagerAddress;
+    address public collateralManager;
     address public pool;
     uint public numCollections;
     ILendingPool public IPool;
+    address public owner;
+    address public portal;
 
     constructor() {
+        owner = msg.sender;
     }
 
     // Initialize function to set dependencies
-    function initialize(address _collateralManagerAddr, address _pool) external {
-        require(_collateralManagerAddr == address(0), "Already initialized");
+    function initialize(address _collateralManagerAddr, address _pool, address _portal) external onlyOwner {
+        require(collateralManagerAddr == address(0), "Already initialized");
         require(_collateralManagerAddr != address(0) && _pool != address(0), "Invalid addresses");
 
-        collateralManagerAddress = _collateralManagerAddr;
+        collateralManagerAddr = _collateralManagerAddr;
         pool = _pool;
         IPool = ILendingPool(pool);
+        portal = _portal;
     }
 
     modifier onlyCollateralManager() {
-        require(msg.sender == collateralManagerAddress, "[*ERROR*] Only the collateralManager can call this function!");
+        require(msg.sender == collateralManager, "[*ERROR*] Only the collateralManager can call this function!");
+        _;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "[*ERROR*] Only the collateralManager can call this function!");
+        _;
+    }
+
+    modifier onlyPortal() {
+        require(msg.sender == portal, "[*ERROR*] Only the collateralManager can call this function!");
         _;
     }
 
@@ -55,8 +69,8 @@ contract NftTrader {
     function addListing(uint256 basePrice, address collection, uint256 tokenId, bool auction, uint256 duration, address originalOwner) public onlyCollateralManager {
         IERC721 token = IERC721(collection);
         // Ensure the NFT is owned and approved by the collateralManager
-        require(token.ownerOf(tokenId) == collateralManagerAddress, "[*ERROR*] collateral manager must own the NFT!");
-        require(token.isApproved(collateralManagerAddress, address(this), tokenId), "[*ERROR*] Contract is not approved by collateral manager!"); // might delete this so that approval only happens when purchased
+        require(token.ownerOf(tokenId) == collateralManager, "[*ERROR*] collateral manager must own the NFT!");
+        require(token.isApproved(collateralManager, address(this), tokenId), "[*ERROR*] Contract is not approved by collateral manager!"); // might delete this so that approval only happens when purchased
         // check for no redundant listings currently; 
         if (isListed(collection, tokenId)) {
             // maybe have an update function that'll only update it's basePrice
@@ -65,10 +79,10 @@ contract NftTrader {
         // Add the listing
         uint256 timestamp = block.timestamp();
         uint256 auctionEnds = timestamp + duration;
-        listings[collection][tokenId] = Listing(collateralManagerAddress, collection, tokenId, basePrice, timestamp, auctionEnds, 0, address(0), !auction, originalOwner);
+        listings[collection][tokenId] = Listing(collateralManager, collection, tokenId, basePrice, timestamp, auctionEnds, 0, address(0), !auction, originalOwner);
 
         // create a listing event
-        emit NFTListed(collection, tokenId, basePrice, collateralManagerAddress, auction, timestamp);
+        emit NFTListed(collection, tokenId, basePrice, collateralManager, auction, timestamp);
     }
 
     // Delist an NFT 
@@ -92,7 +106,7 @@ contract NftTrader {
         // TODO can't delist if auction has ended and has a highest bidder!!!
     }
 
-    function placeBid(address collection, uint256 tokenId) external payable {
+    function placeBid(address bidder, address collection, uint256 tokenId) external payable onlyPortal {
         require(isListed(collection, tokenId), "token not listed");
         Listing storage item = listings[collection][tokenId];
         require(item.auctionEnds > block.timestamp, "Auction has ended");
@@ -106,7 +120,7 @@ contract NftTrader {
 
         // Update the highest bid
         item.highestBid = msg.value;
-        item.highestBidder = msg.sender;
+        item.highestBidder = bidder;
         // TODO: do we need to update listings map with new item or is it changed directly?
         // listings[collection][tokenId] = item; // to update the listing or does storage item mean we can mutate 'item' without creating a new struct
     }
@@ -116,8 +130,8 @@ contract NftTrader {
         // called only if auction duration has been completed.
         // if there is a bid, automatically transfer NFT to highest bidders address
         // if no bid made, change buyNow bool from false to true
-        require(isListed(collection, tokenId), "Token not listed for sale");
-        Listing item = listings[collection][tokenId];
+        require(isListed(collection, tokenId), "Token not listed for sale")
+        Listing storage item = listings[collection][tokenId]
         require(item.auctionEnd <= block.timestamp, "Auction has not ended");
         // now we know auction can be ended
         address winner = item.highestBidder;
@@ -139,7 +153,7 @@ contract NftTrader {
 
 
     // purchase an NFT (user purchases from CollateralManager) ??-F
-    function purchase(address collection, uint256 tokenId) external payable {
+    function purchase(address buyer, address collection, uint256 tokenId) external payable onlyPortal {
         require(isListed(collection, tokenId), "NFT not listed");
         Listing memory item = listings[collection][tokenId];
         // require(item.price > 0, "[*ERROR*] NFT not listed for sale!");
@@ -150,7 +164,7 @@ contract NftTrader {
 
         // Update balances and transfer NFT
         IERC721 token = IERC721(collection);
-        token.safeTransferFrom(item.seller, msg.sender, tokenId);
+        token.safeTransferFrom(item.seller, buyer, tokenId);
         // send funds back to the pool
 
         (bool success, ) = pool.call{value: msg.value}("");
@@ -159,7 +173,7 @@ contract NftTrader {
         IPool(pool).liquidate(item.originalOwner, collection, tokenId, amount);
         // Remove the listing
         delete listings[collection][tokenId];
-        emit NFTPurchased(collection, tokenId, item.price, msg.sender);
+        emit NFTPurchased(collection, tokenId, item.price, buyer);
     }
 
     // Withdraw funds NOT NEEDED
@@ -177,7 +191,7 @@ contract NftTrader {
     // helper functions:
 
     // for the liquidator to get the data ?? not necessary
-    function viewListing(address collection, uint256 tokenId) public view returns (Listing) {
+    function viewListing(address collection, uint256 tokenId) public view returns (struct) {
         return listings[collection][tokenId];
     }
 
@@ -195,4 +209,5 @@ contract NftTrader {
     //     uint256 timeNow = block.timestamp;
     //     if 
     // }
+
 }
