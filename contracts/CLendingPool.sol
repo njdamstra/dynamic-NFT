@@ -373,8 +373,8 @@ contract LendingPool is ReentrancyGuard {
         return total;
     }
 
-    function getTotalBorrowedUsers() public returns (mapping(address => uint256) memory) {
-        return totalBorrowedUsers;
+    function getTotalBorrowedUsers(address borrower) public returns (uint256) {
+        return totalBorrowedUsers[borrower];
     }
 
 }

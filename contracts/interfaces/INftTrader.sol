@@ -41,11 +41,11 @@ interface INftTrader {
 
     function delist(address collection, uint256 tokenId) external;
 
-    function placeBid(address collection, uint256 tokenId) external payable;
+    function placeBid(address bidder, address collection, uint256 tokenId) external payable;
 
     function endAuction(address collection, uint256 tokenId) external;
 
-    function purchase(address collection, uint256 tokenId) external payable;
+    function purchase(address buyer, address collection, uint256 tokenId) external payable;
 
     // Helper Functions
     function isListed(address collection, uint256 tokenId) external view returns (bool);

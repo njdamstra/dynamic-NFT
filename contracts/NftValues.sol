@@ -59,7 +59,7 @@ contract NftValues {
     function addCollection(address collectionAddr) external onlyOwner {
         require(collectionAddr != address(0), "Invalid collection address");
         if (collectionIndex[collectionAddr] != 0 && (
-            collectionList.length != 0 || collectionList[collectionIndex[collectionAddr]] == collectionAddr
+            collectionList.length != 0 || collectionList[collectionIndex[collectionAddr]].collection == collectionAddr
             )) {
                 return; // collection already in list
             }
@@ -74,7 +74,7 @@ contract NftValues {
     function removeCollection(address collectionAddr) external onlyOwner {
         require(collectionAddr != address(0), "Invalid collection address");
         uint256 index = collectionIndex[collectionAddr];
-        if (index >= collectionList.length && collectionList[index] != collectionAddr) {
+        if (index >= collectionList.length && collectionList[index].collection != collectionAddr) {
             return; // collection is not part of the list
         }
         //TODO revise
@@ -89,7 +89,7 @@ contract NftValues {
         if (index != lastIndex) {
             NftCollection memory lastCollection = collectionList[lastIndex];
             collectionList[index] = lastCollection; // Overwrite the removed element with the last element
-            collectionIndex[lastCollection] = index; // Update the index of the moved element
+            collectionIndex[lastCollection.collection] = index; // Update the index of the moved element
         }
         // Remove the last element
         collectionList.pop();
@@ -98,7 +98,11 @@ contract NftValues {
     }
 
     function getCollectionList() public view returns (address[] memory) {
-        return collectionList;
+        address[] memory addresses = new address[](collectionList.length);
+        for (uint256 i = 0; i < collectionList.length; i++) {
+            addresses[i] = collectionList[i].collection;
+        }
+        return addresses;
     }
 
     function getCollection(address collection) public view returns (NftCollection memory) {
@@ -118,7 +122,7 @@ contract NftValues {
     function updateFloorPrice(address collectionAddr, uint256 newFloorPrice) external onlyOwner {
         require(collectionAddr != address(0), "Invalid collection address");
         uint256 index = collectionIndex[collectionAddr];
-        if (index >= collectionList.length && collectionList[index] != collectionAddr) {
+        if (index >= collectionList.length && collectionList[index].collection != collectionAddr) {
             return; // not in the list of collections
         }
         if (newFloorPrice <= 0) {

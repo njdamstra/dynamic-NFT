@@ -71,7 +71,7 @@ contract UserPortal is ReentrancyGuard {
         nft.safeTransferFrom(msg.sender, address(this), tokenId);
 
         // Approve CollateralManager to transfer the NFT
-        nft.approve(iCollateralManager, tokenId);
+        nft.approve(address(iCollateralManager), tokenId);
 
         // Call addCollateral on CollateralManager
         ICollateralManager(iCollateralManager).addCollateral(msg.sender, collection, tokenId);

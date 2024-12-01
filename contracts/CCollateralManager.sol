@@ -140,7 +140,8 @@ contract CollateralManager {
         // 2. update liquidatableCollateral
         updateLiquidatableCollateral(borrower);
         // 3. emit event to show this NFT was liquidated!
-        emit Liquidated(borrower, collectionAddress, tokenId, amount);
+        //TODO get actual timestamp
+        emit Liquidated(borrower, collectionAddress, tokenId, amount,1);
     }
 
     // @Helper for liquidateNft
@@ -164,13 +165,13 @@ contract CollateralManager {
             }
         }
     }
-
+    //TODO
     function addCollateral(address borrower, address collectionAddress, uint256 tokenId) public onlyPortal {
         require(isNftValid(borrower, collectionAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
-        CollateralProfile memory collateralProfile;
         // check whether borrower already exists
+        CollateralProfile storage collateralProfile;
         if (iLendingPool.isBorrower(borrower)) {
-            collateralProfile = borrowersCollateral[borrower];
+            CollateralProfile storage collateralProfile = borrowersCollateral[borrower];
             for (uint256 i = 0; i < collateralProfile.nftList.length; i++) {
                 require(!(collateralProfile.nftList[i].collectionAddress == collectionAddress && collateralProfile.nftList[i].tokenId == tokenId), "[*ERROR*] Duplicate NFT in collateral!");
             }
@@ -180,20 +181,19 @@ contract CollateralManager {
             // if borrower does not exist yet, add him to the pool borrower mapping
             iLendingPool.addBorrowerIfNotExists(borrower);
             Nft[] memory nftList;
-            collateralProfile = CollateralProfile(0,nftList);
+            CollateralProfile storage collateralProfile = CollateralProfile(0,nftList);
         }
-
 
         IERC721 nftContract = IERC721(collectionAddress);
         nftContract.transferFrom(portal, address(this), tokenId);
-
-        collateralProfile.nftList.push(Nft(collectionAddress, tokenId, nftContract,false));
+        Nft memory nft = Nft(collectionAddress, tokenId, nftContract,false);
+        collateralProfile.nftList.push(nft);
         collateralProfile.nftListLength++;
 
         registerNft(collectionAddress, tokenId); // sends to NftValues to add to list of NFTs it keeps track of
         nftContract.approve(nftTraderAddress, tokenId); // Approves NftTrader to transfer NFT on CM's behalf -N
-
-        emit CollateralAdded(borrower, collectionAddress, tokenId);
+        //TODO value, ts
+        emit CollateralAdded(borrower, collectionAddress, tokenId,1,1);
     }
 
     function redeemCollateral(address borrower, address collectionAddress, uint256 tokenId) public onlyPortal {
@@ -244,7 +244,7 @@ contract CollateralManager {
 
     //TODO NATE get the actual listing price for nft from nfttrader
     function getNftListingPrice(address collectionAddress, uint256 tokenId) private returns (uint256) {
-        return;
+        return 0;
     }
 
     function getNftListValue(address borrower) private returns (uint256) {
@@ -272,14 +272,14 @@ contract CollateralManager {
         uint256 duration = 1000;
         iNftTrader.addListing(basePrice, collection, tokenId, true, duration, borrower);
 
-        // emit NFTListed event
-        emit NFTListed(borrower, collection, tokenId, basePrice, block.timestamp());
+        //TODO emit NFTListed event
     }
 
     function delistTrade(address collection, uint256 tokenId) private {
         iNftTrader.delist(collection, tokenId);
         // emit NFTDeListed event
-        emit NFTDeListed(collection, tokenId, block.timestamp());
+        emit NFTDeListed(collection, tokenId, block.timestamp);
+
     }
 
     function getBasePrice(address collection, uint256 tokenId) public returns (uint256) {

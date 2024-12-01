@@ -21,9 +21,9 @@ contract NftTrader {
     }
 
     address public collateralManagerAddr;
-    address public pool;
+    address public poolAddr;
     uint public numCollections;
-    ILendingPool public IPool;
+    ILendingPool public iLendingPool;
     address public owner;
     address public portal;
 
@@ -37,8 +37,8 @@ contract NftTrader {
         require(_collateralManagerAddr != address(0) && _pool != address(0), "Invalid addresses");
 
         collateralManagerAddr = _collateralManagerAddr;
-        pool = _pool;
-        IPool = ILendingPool(pool);
+        poolAddr = _pool;
+        iLendingPool = ILendingPool(poolAddr);
         portal = _portal;
     }
 
@@ -79,7 +79,7 @@ contract NftTrader {
         }
 
         // Add the listing
-        uint256 timestamp = block.timestamp();
+        uint256 timestamp = block.timestamp;
         uint256 auctionEnds = timestamp + duration;
         listings[collection][tokenId] = Listing(collateralManagerAddr, collection, tokenId, basePrice, timestamp, auctionEnds, 0, address(0), !auction, originalOwner);
 
@@ -100,7 +100,7 @@ contract NftTrader {
                 return; // someone placed a bid on it --> true it's purchased and can't be delisted.
             } else {
                 delete listings[collection][tokenId];
-                emit NFTDelisted(collection, tokenId);
+                emit NFTDelisted(collection, tokenId, block.timestamp);
                 return; // successfully delisted and no one placed a bid on it!
             }
         }
@@ -143,10 +143,10 @@ contract NftTrader {
         }
         IERC721(collection).safeTransferFrom(item.seller, winner, tokenId);
         // Transfer the funds to the pool
-        (bool success, ) = pool.call{value: item.highestBid}("");
+        (bool success, ) = poolAddr.call{value: item.highestBid}("");
         require(success, "Transfer to pool failed");
 
-        IPool.liquidate(item.originalOwner, collection, tokenId, item.highestBid);
+        iLendingPool.liquidate(item.originalOwner, collection, tokenId, item.highestBid);
 
         delete listings[collection][tokenId];
     }
@@ -166,13 +166,13 @@ contract NftTrader {
         token.safeTransferFrom(item.seller, buyer, tokenId);
         // send funds back to the pool
 
-        (bool success, ) = pool.call{value: msg.value}("");
+        (bool success, ) = poolAddr.call{value: msg.value}("");
         require(success, "Transfer to pool failed");
 
-        IPool(pool).liquidate(item.originalOwner, collection, tokenId, amount);
+        iLendingPool.liquidate(item.originalOwner, collection, tokenId, amount);
         // Remove the listing
         delete listings[collection][tokenId];
-        emit NFTPurchased(collection, tokenId, item.basePrice, buyer);
+        emit NFTPurchased(collection, tokenId, item.basePrice, buyer,block.timestamp);
     }
 
     // Withdraw funds NOT NEEDED
