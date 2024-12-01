@@ -131,6 +131,7 @@ contract LendingPool is ReentrancyGuard {
         // Update the pool balance
         poolBalance -= amount;
 
+
         //update suppliedUsers
         totalSuppliedUsers[lender] -= amount;
 
