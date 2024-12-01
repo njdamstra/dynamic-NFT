@@ -85,7 +85,7 @@ contract CollateralManager {
     }
 
     function calculateHealthFactor(address borrower, uint256 collateralValue) private returns (uint256) {
-        uint256 totalDebt = iLendingPool.totalBorrowedUsers[borrower];
+        uint256 totalDebt = iLendingPool.getTotalBorrowedUsers(borrower);
         if (totalDebt == 0) return type(uint256).max; // Infinite health factor if no debt
         require(collateralValue <= type(uint256).max / 100, "[*ERROR*] Collateral value too high!");
         return (collateralValue * 100) / totalDebt;
@@ -93,7 +93,7 @@ contract CollateralManager {
 
 
     // Get a list of all liquidatable NFTs for a user
-    function getliquidatableCollateral(address borrower) public returns (Nft[]) {
+    function getliquidatableCollateral(address borrower) public returns (Nft[] memory) {
         updateLiquidatableCollateral(borrower);
         return liquidatableCollateral[borrower];
     }
@@ -101,10 +101,10 @@ contract CollateralManager {
     // Update the liquidatableCollateral Mapping
     function updateLiquidatableCollateral(address borrower) private {
         uint256 healthFactor = getHealthFactor(borrower);
-        Nft[] nftList = getNftList(borrower);
+        Nft[] memory nftList = getNftList(borrower);
         if (healthFactor < 120) {
             for (uint256 i = 0; i < nftList.length; i++) {
-                Nft item = nftList[i];
+                Nft memory item = nftList[i];
                 if (!item.isLiquidatable) {
                     addTradeListing(borrower, item.collectionAddress, item.tokenId);
                     nftList[i].isLiquidatable = true;
@@ -114,21 +114,21 @@ contract CollateralManager {
         }
         else {
             for (uint256 i = 0; i < nftList.length; i++) {
-                Nft item = nftList[i];
+                Nft memory item = nftList[i];
                 if (item.isLiquidatable) {
                     nftList[i].isLiquidatable = false;
                     delistTrade(item.collectionAddress, item.tokenId);
                 }
             }
-            Nft[] emptyList;
+            Nft[] memory emptyList;
             liquidatableCollateral[borrower] = emptyList;
         }
     }
 
     function updateAllLiquidatableCollateral() external {
-        address[] borrowerList = iLendingPool.getBorrowerList();
+        address[] memory borrowerList = iLendingPool.getBorrowerList();
         for (uint256 i = 0; i < borrowerList.length; i++) {
-            address memory borrower = borrowerList[i];
+            address borrower = borrowerList[i];
             updateLiquidatableCollateral(borrower);
         }
     }
@@ -231,7 +231,7 @@ contract CollateralManager {
     }
 
     // Get the total value of all NFTs in a borrower's collateral profile
-    function getNftList(address borrower) private returns (Nft[]) {
+    function getNftList(address borrower) private returns (Nft[] memory) {
         CollateralProfile memory collateralProfile = borrowersCollateral[borrower];
         return collateralProfile.nftList;
     }

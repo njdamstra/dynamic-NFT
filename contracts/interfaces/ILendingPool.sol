@@ -51,4 +51,5 @@ interface ILendingPool {
     function deleteBorrower(address borrower) external;
     function addLenderIfNotExists(address lender) external;
     function deleteLender(address lender) external;
+    function getTotalBorrowedUsers() public returns (mapping(address => uint256) memory);
 }

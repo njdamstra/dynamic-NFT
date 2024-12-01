@@ -59,7 +59,7 @@ interface ICollateralManager {
 
     function getliquidatableCollateral(
         address borrower
-    ) external returns (Nft[]); // Use `Nft[]` as per the contract.
+    ) external returns (Nft[] memory); // Use `Nft[]` as per the contract.
 
     function getCollateralValue(address borrower) external returns (uint256);
 

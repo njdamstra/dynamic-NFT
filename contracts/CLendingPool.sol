@@ -70,7 +70,7 @@ contract LendingPool is ReentrancyGuard {
     event Liquidated(address indexed borrower, uint256 tokenId, uint256 amountRecovered);
 
     function isLender(address lender) public view returns (bool) {
-        if (lenderIndex[lender] == address(0)) {
+        if (lenderIndex[lender] == 0) {
             return false;
         }
         if (totalSuppliedUsers[lender] == 0) {
@@ -81,7 +81,7 @@ contract LendingPool is ReentrancyGuard {
     }
 
     function isBorrower(address borrower) public view returns (bool) {
-        if (borrowerIndex[borrower] == address(0)) {
+        if (borrowerIndex[borrower] == 0) {
             return false;
         }
         if (totalBorrowedUsers[borrower] == 0) {
@@ -99,7 +99,7 @@ contract LendingPool is ReentrancyGuard {
         return lenders;
     }
 
-    function addBorrowerIfNotExists(address borrower) external {
+    function addBorrowerIfNotExists(address borrower) public {
         require(borrower != address(0), "Invalid borrower address");
 
         // Check if the borrower is already in the list.
@@ -113,7 +113,7 @@ contract LendingPool is ReentrancyGuard {
     }
 
 
-    function deleteBorrower(address borrower) external {
+    function deleteBorrower(address borrower) public {
         require(borrower != address(0), "Invalid borrower address");
 
         uint256 index = borrowerIndex[borrower];
@@ -134,7 +134,7 @@ contract LendingPool is ReentrancyGuard {
         delete netBorrowedUsers[borrower];
     }
 
-    function addLenderIfNotExists(address lender) external {
+    function addLenderIfNotExists(address lender) public {
         require(lender != address(0), "Invalid lender address");
 
         if (lenderIndex[lender] != 0 || (lenders.length != 0 && lenders[lenderIndex[lender]] == lender)) {
@@ -146,7 +146,7 @@ contract LendingPool is ReentrancyGuard {
         lenderIndex[lender] = lenders.length - 1;
     }
 
-    function deleteLender(address lender) external {
+    function deleteLender(address lender) public {
         require(lender != address(0), "Invalid lender address");
 
         uint256 index = lenderIndex[lender];
@@ -218,7 +218,7 @@ contract LendingPool is ReentrancyGuard {
         //update suppliedUsers
         totalSuppliedUsers[lender] -= amount;
 
-        if (!totalSuppliedUsers[lender] > 0) {
+        if (totalSuppliedUsers[lender] == 0) {
             deleteLender(lender);
         }
 
@@ -252,7 +252,7 @@ contract LendingPool is ReentrancyGuard {
             netBorrowedUsers[borrower] += amount;
         } else {
             addBorrowerIfNotExists(borrower);
-            totalBorrowedUsers += newLoan;
+            totalBorrowedUsers[borrower] += newLoan;
             netBorrowedUsers[borrower] += amount;
         }
 
@@ -271,7 +271,7 @@ contract LendingPool is ReentrancyGuard {
     }
 
     // Allows users to repay borrowed ETH with interest
-    function repay(address borrower, uint256 amount) external payable onlyPortal {
+    function repay(address borrower, uint256 amount) public payable onlyPortal {
         require(isBorrower(borrower), "[*ERROR*] No debt to repay!");
         require(amount > 0, "[*ERROR*] Contains no value");
 
@@ -313,7 +313,8 @@ contract LendingPool is ReentrancyGuard {
         // uint256 healthFactor = collateralManager.getHealthFactor(borrower, nftId);
         // require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
         uint256 nftValue = iCollateralManager.getNftValue(collection);
-        iCollateralManager.liquidateNft(borrower, collection, tokenId);
+        //TODO
+        iCollateralManager.liquidateNft(borrower, collection, tokenId,1);
 
         // @Felix idk how you're doing the loan pool logic
         // im to drunk to figure it out rn
@@ -370,6 +371,10 @@ contract LendingPool is ReentrancyGuard {
             total += totalSuppliedUsers[lenders[i]];
         }
         return total;
+    }
+
+    function getTotalBorrowedUsers() public returns (mapping(address => uint256) memory) {
+        return totalBorrowedUsers;
     }
 
 }

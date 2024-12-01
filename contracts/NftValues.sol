@@ -97,7 +97,7 @@ contract NftValues {
         emit CollectionRemoved(collectionAddr);
     }
 
-    function getCollectionList() public view returns (address[]) {
+    function getCollectionList() public view returns (address[] memory) {
         return collectionList;
     }
 
