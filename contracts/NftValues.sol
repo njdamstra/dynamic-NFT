@@ -74,16 +74,15 @@ contract NftValues {
     function removeCollection(address collectionAddr) external onlyOwner {
         require(collectionAddr != address(0), "Invalid collection address");
         uint256 index = collectionIndex[collectionAddr];
-        if (index >= collectionList.length && collectionList[index].collection != collectionAddr) {
-            return; // collection is not part of the list
-        }
-        //TODO revise
-        // Ensure no NFTs from this collection are in collateralNfts
-        //for (uint256 i = 0; i < collateralNfts.length; i++) {
-        //    if (nftList[i].collection == collectionAddr) {
-                return; // "Cannot remove collection with active collateral NFTs"
-        //    }
-        //}
+        require(index < collectionList.length, "Collection is not part of the list");
+
+        // Ensure no NFTs from this collection are in collateralNfts (uncomment and implement logic if needed)
+        // for (uint256 i = 0; i < collateralNfts.length; i++) {
+        //     if (nftList[i].collection == collectionAddr) {
+        //         revert("Cannot remove collection with active collateral NFTs");
+        //     }
+        // }
+
         // Move the last element into the place of the element to remove
         uint256 lastIndex = collectionList.length - 1;
         if (index != lastIndex) {
@@ -91,11 +90,13 @@ contract NftValues {
             collectionList[index] = lastCollection; // Overwrite the removed element with the last element
             collectionIndex[lastCollection.collection] = index; // Update the index of the moved element
         }
+
         // Remove the last element
         collectionList.pop();
         delete collectionIndex[collectionAddr]; // Delete the index mapping for the removed collection
         emit CollectionRemoved(collectionAddr);
     }
+
 
     function getCollectionList() public view returns (address[] memory) {
         address[] memory addresses = new address[](collectionList.length);
