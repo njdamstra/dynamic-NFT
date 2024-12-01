@@ -212,13 +212,9 @@ contract LendingPool is ReentrancyGuard {
         uint256 healthFactor = iCollateralManager.getHealthFactor(borrower);
         require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
 
-        // get the nftValue
-        uint256 nftValue = iCollateralManager.getNftValue(collection);
-
+        // TODO get the nftValue from sold listing
         // TODO does the trader do the listing??
         iCollateralManager.liquidateNft(borrower, collection, tokenId);
-
-        uint256 totalDebt = totalBorrowedUsers[borrower];
 
         // debt is repaid with liquidated amount
         repay(borrower,amount);
