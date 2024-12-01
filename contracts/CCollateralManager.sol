@@ -12,6 +12,9 @@ contract CollateralManager {
 
     mapping(address => CollateralProfile) public borrowersCollateral;// Tracks users collateral profile for multiple nfts
     mapping(address => Nft[]) public liquidatableCollateral;
+    address[] public borrowerList;
+    mapping(address => uint) public borrowersIndex;
+
 
     struct CollateralProfile {
         uint256 nftListLength; //renamed from numNfts
@@ -24,7 +27,7 @@ contract CollateralManager {
         IERC721 nftContract;
         bool isLiquidatable; // if NFT is currently being auctioned off or still hasn't been bought by liquidator
     }
-    
+
     address public owner;
     address public pool;
     address public nftTraderAddress;
@@ -124,6 +127,13 @@ contract CollateralManager {
         }
     }
 
+    function updateAllLiquidatableCollateral() external {
+        for (uint 1 = 0; i < borrowerList.length; i++) {
+            address memory borrower = borrowerList[i];
+            updateLiquidatableCollateral(borrower);
+        }
+    }
+
     // This function is called only by the Pool after the Trader sold the NFT and called liquidate in the pool
     function liquidateNft(address borrower, address collectionAddress, uint256 tokenId, uint256 amount) public onlyPool {
         // 1. update borrowersCollateral
@@ -163,16 +173,23 @@ contract CollateralManager {
     // TODO update pool
     function addCollateral(address borrower, address collectionAddress, uint256 tokenId) public onlyPortal {
         require(isNftValid(msg.sender, collectionAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
+        uint len = borrowerList.length;
+        addBorrower(borrower);
+        uint newLen = borrowerList.length;
+        if (len != newLen) {
+            // TODO new user just create a new instance of CollateralProfile
+        } else {
+            CollateralProfile memory collateralProfile = borrowersCollateral[borrower];
 
-        // uint256 nftValue = getNftValue(collectionAddress, tokenId);
-        CollateralProfile memory collateralProfile = borrowersCollateral[borrower];
-
-        for (uint256 i = 0; i < collateralProfile.nftList.length; i++) {
-            require(
-                !(collateralProfile.nftList[i].collectionAddress == collectionAddress && collateralProfile.nftList[i].tokenId == tokenId),
-                "[*ERROR*] Duplicate NFT in collateral!"
-            );
+            for (uint256 i = 0; i < collateralProfile.nftList.length; i++) {
+                require(
+                    !(collateralProfile.nftList[i].collectionAddress == collectionAddress && collateralProfile.nftList[i].tokenId == tokenId),
+                    "[*ERROR*] Duplicate NFT in collateral!"
+                );
+            }
         }
+        // uint256 nftValue = getNftValue(collectionAddress, tokenId);
+        
         IERC721 nftContract = IERC721(collectionAddress);
         nftContract.transferFrom(portal, address(this), tokenId);
         collateralProfile.nftList.push(Nft(collectionAddress, tokenId, nftContract,false));
@@ -211,7 +228,7 @@ contract CollateralManager {
         if (found && newHealthFactor > 120) {
             // update collateral profile
             Nft[] nftContract = IERC721(collectionAddress);
-            nftContract.transferFrom(address(this), pool, tokenId);
+            nftContract.transferFrom(address(this), borrower, tokenId);
             _deleteNftFromCollateralProfile(borrower, collectionAddress, tokenId);
         }
         require(healthFactor > 120,"[*ERROR*] Health Factor has to be above 1.2!");
@@ -282,7 +299,38 @@ contract CollateralManager {
     // NATE TODO:
     function registerNft(address collection, uint256 tokenId) private {
         iNftTrader.addCollection(collection);
-
     }
+
+    function addBorrower(address borrower) external {
+        require(borrower != address(0), "Invalid collection address");
+        if (borrowerIndex[borrower] != 0 && (
+            borrowerList.length != 0 || borrowerList[borrowerIndex[borrower]] == borrower
+            )) {
+                return; // collection already in list
+            }
+        // Add the new collection
+        borrowerList.push(borrower);
+        borrowerIndex[borrower] = borrowerList.length - 1; // Store the index of the collection
+    }
+
+    // Remove a collection from the list
+    function removeBorrower(address borrower) external {
+        require(borrower != address(0), "Invalid collection address");
+        uint256 index = borrowerIndex[borrower];
+        if (index >= borrowerList.length && borrowerList[index] != borrower) {
+            return; // collection is not part of the list
+        }
+        // Move the last element into the place of the element to remove
+        uint256 lastIndex = borrowerList.length - 1;
+        if (index != lastIndex) {
+            address memory lastBorrower = borrowerList[lastIndex];
+            borrowerList[index] = lastBorrower; // Overwrite the removed element with the last element
+            borrowerIndex[lastBorrower.borrower] = index; // Update the index of the moved element
+        }
+        // Remove the last element
+        borrowerList.pop();
+        delete borrowerIndex[borrower]; // Delete the index mapping for the removed collection
+    }
+
 
 }
