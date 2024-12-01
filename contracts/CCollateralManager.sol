@@ -184,6 +184,7 @@ contract CollateralManager {
             collateralProfile = CollateralProfile(0,nftList);
         }
 
+
         IERC721 nftContract = IERC721(collectionAddress);
         nftContract.transferFrom(portal, address(this), tokenId);
 
