@@ -301,36 +301,7 @@ contract CollateralManager {
         iNftTrader.addCollection(collection);
     }
 
-    function addBorrower(address borrower) external {
-        require(borrower != address(0), "Invalid collection address");
-        if (borrowerIndex[borrower] != 0 && (
-            borrowerList.length != 0 || borrowerList[borrowerIndex[borrower]] == borrower
-            )) {
-                return; // collection already in list
-            }
-        // Add the new collection
-        borrowerList.push(borrower);
-        borrowerIndex[borrower] = borrowerList.length - 1; // Store the index of the collection
-    }
 
-    // Remove a collection from the list
-    function removeBorrower(address borrower) external {
-        require(borrower != address(0), "Invalid collection address");
-        uint256 index = borrowerIndex[borrower];
-        if (index >= borrowerList.length && borrowerList[index] != borrower) {
-            return; // collection is not part of the list
-        }
-        // Move the last element into the place of the element to remove
-        uint256 lastIndex = borrowerList.length - 1;
-        if (index != lastIndex) {
-            address memory lastBorrower = borrowerList[lastIndex];
-            borrowerList[index] = lastBorrower; // Overwrite the removed element with the last element
-            borrowerIndex[lastBorrower.borrower] = index; // Update the index of the moved element
-        }
-        // Remove the last element
-        borrowerList.pop();
-        delete borrowerIndex[borrower]; // Delete the index mapping for the removed collection
-    }
 
 
 }

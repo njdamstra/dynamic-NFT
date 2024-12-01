@@ -10,8 +10,10 @@ import {ICollateralManager} from "../interfaces/ICollateralManager.sol";
 
 
 contract LendingPool is ReentrancyGuard {
-    address[] lenders;
-    address[] borrowers;
+    address[] lenderList;
+    address[] borrowerList;
+    mapping(address => uint) borrowIndex;
+    mapping(address => uint) lenderIndex;
 
     mapping(address => uint256) public totalSuppliedUsers; // Tracks ETH (without interest) supplied by lenders
     mapping(address => uint256) public totalBorrowedUsers; // Tracks ETH (with interest) currently borrowed by users
@@ -249,8 +251,8 @@ contract LendingPool is ReentrancyGuard {
 
     function allocateInterest(uint256 amount) private {
         uint256 totalSupplied = getTotalSupplied();
-        for (uint256 i = 0; i < lenders.length; i++) {
-            address lender = lenders[i];
+        for (uint256 i = 0; i < lenderList.length; i++) {
+            address lender = lenderList[i];
             uint256 lenderBalance = totalSuppliedUsers[lender];
 
             if (totalSupplied > 0) {
@@ -262,8 +264,8 @@ contract LendingPool is ReentrancyGuard {
 
     function getTotalSupplied() private view returns (uint256) {
         uint256 total = 0;
-        for (uint256 i = 0; i < lenders.length; i++) {
-            total += totalSuppliedUsers[lenders[i]];
+        for (uint256 i = 0; i < lenderList.length; i++) {
+            total += totalSuppliedUsers[lenderList[i]];
         }
         return total;
     }
@@ -273,20 +275,12 @@ contract LendingPool is ReentrancyGuard {
             delete totalSuppliedUsers[lender];
             return false;
         }
-        for (uint256 i = 0; i < lenders.length; i++) {
-            if (lenders[i] == lender) {
+        for (uint256 i = 0; i < lenderList.length; i++) {
+            if (lenderList[i] == lender) {
                 return true;
             }
         }
         return false;
-    }
-
-    function addLenderIfNotExists(address lender, uint256 initialAmount) public {
-        // Check if the lender already exists using the isLender function
-        if (!isLender(lender)) {
-            lenders.push(lender); // Add the lender to the lenders array
-            totalSuppliedUsers[lender] = initialAmount; // Initialize their supplied amount
-        }
     }
 
     function isBorrower(address borrower) public view returns (bool) {
@@ -294,53 +288,81 @@ contract LendingPool is ReentrancyGuard {
             delete totalBorrowedUsers[borrower];
             return false;
         }
-        for (uint256 i = 0; i < borrowers.length; i++) {
-            if (borrowers[i] == borrower) {
+        for (uint256 i = 0; i < borrowerList.length; i++) {
+            if (borrowerList[i] == borrower) {
                 return true;
             }
         }
         return false;
     }
 
-    function addBorrowerIfNotExists(address borrower, uint256 initialAmount) public {
-        // Check if the borrower already exists using the isBorrower function
-        if (!isBorrower(borrower)) {
-            borrowers.push(borrower); // Add the borrower to the borrowers array
-            totalBorrowedUsers[borrower] = initialAmount; // Initialize their borrowed amount
-        }
+    function getBorrowerList() public view returns (address[] memory) {
+        return borrowerList;
     }
 
-    function deleteLender(address lender) public {
-        // Check if the lender exists
-        require(isLender(lender), "Lender does not exist");
-        // Remove from the lenders array
-        for (uint256 i = 0; i < lenders.length; i++) {
-            if (lenders[i] == lender) {
-                lenders[i] = lenders[lenders.length - 1]; // Move the last element to the deleted spot
-                lenders.pop(); // Remove the last element
-                break;
+    function getLenderList() public view returns (address[] memory) {
+        return lenderList;
+    }
+
+    function addBorrower(address borrower) external {
+        require(borrower != address(0), "Invalid collection address");
+        if (borrowerIndex[borrower] != 0 && (
+            borrowerList.length != 0 || borrowerList[borrowerIndex[borrower]] == borrower
+            )) {
+                return; // collection already in list
             }
-        }
-        // Remove from the mapping
-        delete totalSuppliedUsers[lender];
+        // Add the new collection
+        borrowerList.push(borrower);
+        borrowerIndex[borrower] = borrowerList.length - 1; // Store the index of the collection
     }
 
-    function deleteBorrower(address borrower) public {
-        // Check if the borrower exists
-        require(isBorrower(borrower), "Borrower does not exist");
-        // Remove from the borrowers array
-        for (uint256 i = 0; i < borrowers.length; i++) {
-            if (borrowers[i] == borrower) {
-                borrowers[i] = borrowers[borrowers.length - 1]; // Move the last element to the deleted spot
-                borrowers.pop(); // Remove the last element
-                break;
+    // Remove a collection from the list
+    function removeBorrower(address borrower) external {
+        require(borrower != address(0), "Invalid collection address");
+        uint256 index = borrowerIndex[borrower];
+        if (index >= borrowerList.length && borrowerList[index] != borrower) {
+            return; // collection is not part of the list
+        }
+        // Move the last element into the place of the element to remove
+        uint256 lastIndex = borrowerList.length - 1;
+        if (index != lastIndex) {
+            address memory lastBorrower = borrowerList[lastIndex];
+            borrowerList[index] = lastBorrower; // Overwrite the removed element with the last element
+            borrowerIndex[lastBorrower] = index; // Update the index of the moved element
+        }
+        // Remove the last element
+        borrowerList.pop();
+        delete borrowerIndex[borrower]; // Delete the index mapping for the removed collection
+    }
+
+    function addLender(address lender) external {
+        require(lender != address(0), "Invalid collection address");
+        if (lenderIndex[lender] != 0 && (
+            lenderList.length != 0 || lenderList[lenderIndex[lender]] == lender
+            )) {
+                return; // collection already in list
             }
-        }
-        // Remove from the mapping
-        delete totalBorrowedUsers[borrower];
+        // Add the new collection
+        lenderList.push(lender);
+        lenderIndex[lender] = lenderList.length - 1; // Store the index of the collection
     }
 
-    function getBorrowersList() public view returns (address[] memory) {
-        return borrowers;
+    // Remove a collection from the list
+    function removeLender(address lender) external {
+        require(lender != address(0), "Invalid collection address");
+        uint256 index = lenderIndex[lender];
+        if (index >= lenderList.length && lenderList[index] != lender) {
+            return; // collection is not part of the list
+        }
+        // Move the last element into the place of the element to remove
+        uint256 lastIndex = lenderList.length - 1;
+        if (index != lastIndex) {
+            address memory lastLender = lenderList[lastIndex];
+            lenderList[index] = lastLender; // Overwrite the removed element with the last element
+            lenderIndex[lastLender] = index; // Update the index of the moved element
+        }
+        // Remove the last element
+        lenderList.pop();
+        delete lenderIndex[lender]; // Delete the index mapping for the removed collection
     }
 }
