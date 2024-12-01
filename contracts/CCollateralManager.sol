@@ -171,7 +171,7 @@ contract CollateralManager {
         // check whether borrower already exists
         CollateralProfile storage collateralProfile;
         if (iLendingPool.isBorrower(borrower)) {
-            CollateralProfile storage collateralProfile = borrowersCollateral[borrower];
+            collateralProfile = borrowersCollateral[borrower];
             for (uint256 i = 0; i < collateralProfile.nftList.length; i++) {
                 require(!(collateralProfile.nftList[i].collectionAddress == collectionAddress && collateralProfile.nftList[i].tokenId == tokenId), "[*ERROR*] Duplicate NFT in collateral!");
             }
@@ -181,7 +181,7 @@ contract CollateralManager {
             // if borrower does not exist yet, add him to the pool borrower mapping
             iLendingPool.addBorrowerIfNotExists(borrower);
             Nft[] memory nftList;
-            CollateralProfile storage collateralProfile = CollateralProfile(0,nftList);
+            collateralProfile.nftListLength = 0;
         }
 
         IERC721 nftContract = IERC721(collectionAddress);

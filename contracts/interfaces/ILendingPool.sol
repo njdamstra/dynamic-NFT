@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 interface ILendingPool {
 
-    mapping(address => uint256) public totalBorrowedUsers;
     // Events
     event Supplied(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
