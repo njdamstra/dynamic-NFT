@@ -15,7 +15,7 @@ async function main() {
 
     console.log("Deploying contracts with:", deployer.address);
 
-    const deployedAddressesPath = path.join(__dirname, "deployedAddresses.json");
+    const deployedAddressesPath = path.join(__dirname, "../mockScript/deployedAddresses.json");
     let deployedAddresses = {};
 
     // Read existing deployed addresses file, if it exists
