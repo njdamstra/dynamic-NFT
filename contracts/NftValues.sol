@@ -66,8 +66,8 @@ contract NftValues {
         // Add the new collection
         collectionList.push(NftCollection(collectionAddr, 0));
         collectionIndex[collectionAddr] = collectionList.length - 1; // Store the index of the collection
-        emit RequestFloorPrice(collectionAddr);
-        emit CollectionAdded(collectionAddr, floorPrice);
+        //emit RequestFloorPrice(collectionAddr);
+        //emit CollectionAdded(collectionAddr, floorPrice);
     }
 
     // Remove a collection from the list
@@ -77,12 +77,13 @@ contract NftValues {
         if (index >= collectionList.length && collectionList[index].collectionAddr != collectionAddr) {
             return; // collection is not part of the list
         }
+        //TODO revise
         // Ensure no NFTs from this collection are in collateralNfts
-        for (uint256 i = 0; i < collateralNfts.length; i++) {
-            if (nftList[i].collection == collectionAddr) {
+        //for (uint256 i = 0; i < collateralNfts.length; i++) {
+        //    if (nftList[i].collection == collectionAddr) {
                 return; // "Cannot remove collection with active collateral NFTs"
-            }
-        }
+        //    }
+        //}
         // Move the last element into the place of the element to remove
         uint256 lastIndex = collectionList.length - 1;
         if (index != lastIndex) {
@@ -97,11 +98,12 @@ contract NftValues {
     }
 
     function getCollectionList() public view returns (address[]) {
-        return collectionAddresses;
+        return collectionList;
     }
 
-    function getCollection(address collection) public returns (memory NftCollection) {
-        return collectionList(collectionIndex[collection]);
+    function getCollection(address collection) public view returns (NftCollection memory) {
+        require(collectionIndex[collection] < collectionList.length, "Collection does not exist");
+        return collectionList[collectionIndex[collection]];
     }
 
     function getFloorPrice(address collection) public view returns (uint256) {
@@ -124,7 +126,7 @@ contract NftValues {
         }
         // Update the floor price
         collectionList[index].floorPrice = newFloorPrice;
-        emit FloorPriceUpdated(collection, newFloorPrice, block.timestamp);
+        emit FloorPriceUpdated(collectionAddr, newFloorPrice, block.timestamp);
     }
 
     // TODO: emit an event that a script listens for to update floor price of a specific collection
