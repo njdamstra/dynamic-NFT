@@ -178,8 +178,6 @@ contract CollateralManager {
 
         } else {
             // if borrower does not exist yet, add him to the pool borrower mapping
-            //TODO check pool logic
-            //addBorrower(borrower);
             iLendingPool.addBorrowerIfNotExists(borrower);
             Nft[] memory nftList;
             collateralProfile = CollateralProfile(0,nftList);
@@ -194,8 +192,7 @@ contract CollateralManager {
         registerNft(collectionAddress, tokenId); // sends to NftValues to add to list of NFTs it keeps track of
         nftContract.approve(nftTraderAddress, tokenId); // Approves NftTrader to transfer NFT on CM's behalf -N
 
-
-    emit CollateralAdded(borrower, collectionAddress, tokenId);
+        emit CollateralAdded(borrower, collectionAddress, tokenId);
     }
 
     function redeemCollateral(address borrower, address collectionAddress, uint256 tokenId) public onlyPortal {
@@ -238,7 +235,7 @@ contract CollateralManager {
         return collateralProfile.nftList;
     }
 
-    //TODO get the actual value from oracle nftvalue
+    //TODO NATE get the actual value from oracle nftvalue
     function getNftValue(address collectionAddress) private returns (uint256) {
         return iNftValues.getFloorPrice(collectionAddress);
     }
@@ -289,7 +286,7 @@ contract CollateralManager {
         return (floorprice * 95) / 100;
     }
 
-    // NATE TODO:
+    // TODO NATE:
     function registerNft(address collection, uint256 tokenId) private {
         iNftTrader.addCollection(collection);
     }
