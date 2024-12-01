@@ -16,25 +16,9 @@ contract LendingPool is ReentrancyGuard {
     mapping(address => uint256) public totalSuppliedUsers; // Tracks ETH (without interest) supplied by lenders
     mapping(address => uint256) public totalBorrowedUsers; // Tracks ETH (with interest) currently borrowed by users
 
-
     mapping(address => uint256) public netBorrowedUsers; // Tracks ETH (without interest) currently borrowed by borrowers
-    mapping(address => uint256) public totalBorrowedUsers; // Tracks ETH (with interest) currently borrowed by users
 
-    mapping(address => uint256) public netSuppliedUsers; // Tracks ETH (without interest) supplied by lenders
-    mapping(address => uint256) public totalSuppliedUsers; // Tracks ETH (without interest) supplied by lenders
-
-
-    uint256 public netBorrowedPool;    // Tracks ETH (without interest) borrowed from the pool
-    uint256 public totalBorrowedPool;    // Tracks ETH (with interest) borrowed from the pool
     uint256 public poolBalance;      // Tracks current ETH in the pool
-
-    address public lpTokenAddr;
-    //ILPToken public iLPToken;          // Loan Pool Token
-    address public dbTokenAddr;
-    //IDBToken public iDBToken;          // Debt Token
-
-    //LPToken public lpToken;
-    //DBToken public dbToken;
 
     address public collateralManagerAddr;
     ICollateralManager public iCollateralManager; // Contract managing NFT collateral
@@ -164,8 +148,10 @@ contract LendingPool is ReentrancyGuard {
 
         if (isBorrower(borrower)) {
             totalBorrowedUsers[borrower] += newLoan;
+            netBorrowedUsers[borrower] += amount;
         } else {
             addBorrowerIfNotExists(borrower, newLoan);
+            netBorrowedUsers[borrower] += amount;
         }
 
         // send eth to borrower
@@ -184,42 +170,35 @@ contract LendingPool is ReentrancyGuard {
 
     // Allows users to repay borrowed ETH with interest
     function repay(address borrower, uint256 amount) external payable onlyPortal {
+        require(isBorrower(borrower), "[*ERROR*] No debt to repay!");
+        require(amount > 0, "[*ERROR*] Contains no value");
+
+        uint256 totalDebt = totalBorrowedUsers[borrower];
         uint256 netDebt = netBorrowedUsers[borrower];
-        require(netDebt > 0, "[*ERROR*] No debt to repay!");
-        require(totalDebt > 0, "[*ERROR*] No debt to repay!");
-        uint256 userBalance = iDBToken.balanceOf(borrower);
-        require(userBalance >= amount, "[*ERROR*] Insufficient DB tokens!");
-        uint256 interest = (netDebt * 10) / 100; // 10% interest
-        uint256 totalDebt = netDebt + interest;
-        require(amount >= totalDebt, "[*ERROR*] Insufficient amount to cover the debt!");
-        require(msg.value == totalDebt, "[*ERROR*] Incorrect repayment amount!");
+        require(amount <= totalDebt, "[*ERROR*] Amount exceeds total debt");
 
-        // Burn DB tokens from the borrower
-        iDBToken.burn(borrower, totalDebt);
+        if (amount >= netDebt) {
+            // Calculate the excess amount (interest)
+            uint256 interest = amount - netDebt;
+            // Clear the net debt and reduce total debt by the amount
+            netBorrowedUsers[borrower] = 0;
+            totalBorrowedUsers[borrower] -= amount;
 
-        poolBalance += totalDebt;
-        netBorrowedPool -= netDebt;
-        totalBorrowedPool -= totalDebt;
-
-        netBorrowedUsers[borrower] -= netDebt;
-        totalBorrowedUsers[borrower] -= totalDebt;
-
-        // Distribute interest proportionally as LP tokens or add to pool if no lenders
-        uint256 activeTokens = iLPToken.getActiveTokens();
-        if (activeTokens > 0) {
-            // Distribute interest proportionally among lenders
-            for (uint256 i = 0; i < activeTokens; i++) {
-                address lender = iLPToken.holderAt(i); // Assumes LPToken has a holder-tracking feature
-                uint256 lenderShare = (iLPToken.balanceOf(lender) * interest) / activeTokens;
-                //TODO ? do we need the token structure DBT?
-                uint256 before = netSuppliedUsers[lender]
-                uint256 after =
-                iLPToken.mint(lender, lenderShare);
+            // Allocate the interest if any
+            if (interest > 0) {
+                allocateInterest(interest);
             }
+
+            if ( netBorrowedUsers[borrower] == 0 && totalBorrowedUsers[borrower] == 0) {
+                deleteBorrower(borrower);
+            }
+
         } else {
-            // If no lenders, add interest to the pool balance
-            poolBalance += interest;
+            // If the repayment is less than netDebt, only reduce netDebt
+            netBorrowedUsers[borrower] -= amount;
+            totalBorrowedUsers[borrower] -= amount;
         }
+
         emit Repaid(borrower, amount);
     }
 
