@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { ethers } = require("hardhat");
 const deployedAddresses = require("./deployedAddresses.json");
-const wallets = require("./signers.json"); // Load named wallets from signers.json
+const wallets = require("../mockScript/signers.json"); // Load named wallets from signers.json
 
 
 
