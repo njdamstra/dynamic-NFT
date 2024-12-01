@@ -15,8 +15,16 @@ contract LendingPool is ReentrancyGuard {
 
     mapping(address => uint256) public totalSuppliedUsers; // Tracks ETH (without interest) supplied by lenders
     mapping(address => uint256) public totalBorrowedUsers; // Tracks ETH (with interest) currently borrowed by users
-
     mapping(address => uint256) public netBorrowedUsers; // Tracks ETH (without interest) currently borrowed by borrowers
+
+    struct BorrowersInterest {
+        address borrower;
+        uint256 interestRate; // the set interest rate we have them
+        uint256 initalTimeStamp; // the start of there initial loan
+        uint256 lastUpdated; // last time interest was added to this users loan
+        uint256 period; // how often we apply the interest rate.
+    }
+    mapping(address => BorrowersInterest) public InterestProfiles;
 
     uint256 public poolBalance;      // Tracks current ETH in the pool
 
@@ -234,7 +242,8 @@ contract LendingPool is ReentrancyGuard {
         require(iCollateralManager.getHealthFactor(borrower) > 150, "[*ERROR*] Health factor too low to borrow more money!");
 
         // calculate interest as 10% of borrowed amount
-        uint256 interest = (amount * 10) / 100; // 10% interest
+        uint256 interestRate = 10;
+        uint256 interest = (amount * interestRate) / 100; // 10% interest
         uint256 newLoan = amount + interest;
         uint256 oldTotalDebt = totalBorrowedUsers[borrower];
         uint256 newTotalDebt = oldTotalDebt + newLoan;
@@ -254,6 +263,12 @@ contract LendingPool is ReentrancyGuard {
             addBorrowerIfNotExists(borrower);
             totalBorrowedUsers[borrower] += newLoan;
             netBorrowedUsers[borrower] += amount;
+            BorrowersInterest profile = new BorrowersInterest;
+            profile.borrower = borrower;
+            profile.interestRate = interestRate;
+            profile.initialTimeStamp = block.timestamp;
+            profile.period = 30; // idk how time stamps works, but this is 30 days
+            InterestProfiles[borrower] = profile;
         }
 
         // send eth to borrower
@@ -362,6 +377,17 @@ contract LendingPool is ReentrancyGuard {
                 uint256 lenderShare = (lenderBalance * amount) / totalSupplied;
                 totalSuppliedUsers[lender] += lenderShare; // Update mapping with new balance
             }
+        }
+    }
+
+    function updateBorrowersInterest() public {
+        uint256 timeNow = block.timestamp;
+        for (uint i = 0; i < borrowers.length; i++) {
+            BorrowersInterest memory profile = InterestProfiles[borrowers[i]];
+            if (profile.lastUpdated + profile.period <= timeNow) {
+                // apply more interest!
+            }
+
         }
     }
 
