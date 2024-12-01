@@ -5,11 +5,10 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {ILendingPool} from "../interfaces/ILendingPool.sol";
 
 contract NftTrader {
-    // map original nft contract address to mapping of nftid to Listing struct. // should we not use tokenId instead of nttId as uint256? -F
-    mapping(address => mapping(uint256 => Listing)) public listings;
-    // Listing struct has the price and seller (collateralManager contract) of the nft to be liquidated
+    mapping(address => mapping(uint256 => Listing)) public listings; // Listing struct has the price and seller (collateralManager contract) of the nft to be liquidated
+
     struct Listing {
-        address seller; // in the case of one llending pool, this will always be the same (CM)
+        address seller; // in the case of one lending pool, this will always be the same (CM)
         address collection;
         uint256 tokenId;
         uint256 basePrice; // first bid has to be at least this amount
@@ -19,8 +18,7 @@ contract NftTrader {
         address highestBidder; // addr of the last bid
         bool buyNow; // if auction duration has passed, then the liquidator can buy immediately at basePrice
         address originalOwner;
-    } // TODO: might delete buyNow since it's not necessary
-
+    }
 
     address public collateralManagerAddr;
     address public pool;
@@ -67,15 +65,17 @@ contract NftTrader {
 
     // Add an NFT listing
     function addListing(uint256 basePrice, address collection, uint256 tokenId, bool auction, uint256 duration, address originalOwner) public onlyCollateralManager {
-        IERC721 token = IERC721(collection);
-        // Ensure the NFT is owned and approved by the collateralManager
-        require(token.ownerOf(tokenId) == collateralManagerAddr, "[*ERROR*] collateral manager must own the NFT!");
-        require(token.isApproved(collateralManagerAddr, address(this), tokenId), "[*ERROR*] Contract is not approved by collateral manager!"); // might delete this so that approval only happens when purchased
-        // check for no redundant listings currently; 
+        IERC721 nftContract = IERC721(collection);
+
+        require(nftContract.ownerOf(tokenId) == collateralManagerAddr, "[*ERROR*] collateral manager must own the NFT!");
+        require(nftContract.isApproved(collateralManagerAddr, address(this), tokenId), "[*ERROR*] Contract is not approved by collateral manager!"); // might delete this so that approval only happens when purchased
+
+        // check for no redundant listings currently;
         if (isListed(collection, tokenId)) {
             //TODO maybe have an update function that'll only update it's basePrice
             return;
         }
+
         // Add the listing
         uint256 timestamp = block.timestamp();
         uint256 auctionEnds = timestamp + duration;
@@ -86,7 +86,7 @@ contract NftTrader {
     }
 
     // Delist an NFT 
-    // (this shouldn't be called when some purchased the nft, this should only be called when the borrower wants to reedem there nft)
+    // (this shouldn't be called when some purchased the nft, this should only be called when the borrower wants to reedem their nft)
     function delist(address collection, uint256 tokenId) public onlyCollateralManager {
         // require(checkTokenId(collection, tokenId), "[*ERROR*] NFT is not listed!");
         // maybe returns bool if it was sold. we don't have a data structure keeping track of if a NFT was sold...
@@ -149,8 +149,6 @@ contract NftTrader {
         delete listings[collection][tokenId];
     }
 
-
-
     // purchase an NFT (user purchases from CollateralManager) ??-F
     function purchase(address buyer, address collection, uint256 tokenId) external payable onlyPortal {
         require(isListed(collection, tokenId), "NFT not listed");
@@ -186,10 +184,8 @@ contract NftTrader {
 
     receive() external payable {}
 
-
-    // helper functions:
-
     // for the liquidator to get the data ?? not necessary
+    // @Helper
     function viewListing(address collection, uint256 tokenId) public view returns (Listing memory) {
         return listings[collection][tokenId];
     }
