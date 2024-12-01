@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol"; // added for security
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-
-import {ICollateralManager} from "./interfaces/ICollateralManager.sol";
+import "./CCollateralManager.sol";
+import {ICollateralManager} from "../contracts/interfaces/ICollateralManager.sol";
 
 
 contract LendingPool is ReentrancyGuard {
@@ -68,6 +68,106 @@ contract LendingPool is ReentrancyGuard {
     event Borrowed(address indexed user, uint256 amount);
     event Repaid(address indexed user, uint256 amount);
     event Liquidated(address indexed borrower, uint256 tokenId, uint256 amountRecovered);
+
+    function isLender(address lender) public view returns (bool) {
+        if (lenderIndex[lender] == address(0)) {
+            return false;
+        }
+        if (totalSuppliedUsers[lender] == 0) {
+            delete totalSuppliedUsers[lender];
+            return false;
+        }
+        return true;
+    }
+
+    function isBorrower(address borrower) public view returns (bool) {
+        if (borrowerIndex[borrower] == address(0)) {
+            return false;
+        }
+        if (totalBorrowedUsers[borrower] == 0) {
+            delete totalBorrowedUsers[borrower];
+            return false;
+        }
+        return true;
+    }
+
+    function getBorrowerList() public view returns (address[] memory) {
+        return borrowers;
+    }
+
+    function getLenderList() public view returns (address[] memory) {
+        return lenders;
+    }
+
+    function addBorrowerIfNotExists(address borrower) external {
+        require(borrower != address(0), "Invalid borrower address");
+
+        // Check if the borrower is already in the list.
+        if (borrowerIndex[borrower] != 0 || (borrowers.length != 0 && borrowers[borrowerIndex[borrower]] == borrower)) {
+            return; // Borrower already exists in the list
+        }
+
+        // Add the borrower to the list and store its index.
+        borrowers.push(borrower);
+        borrowerIndex[borrower] = borrowers.length - 1;
+    }
+
+
+    function deleteBorrower(address borrower) external {
+        require(borrower != address(0), "Invalid borrower address");
+
+        uint256 index = borrowerIndex[borrower];
+        if (index >= borrowers.length || borrowers[index] != borrower) {
+            return; // Borrower is not in the list
+        }
+        uint256 lastIndex = borrowers.length - 1;
+        if (index != lastIndex) {
+            // Swap the borrower to delete with the last borrower.
+            address lastBorrower = borrowers[lastIndex];
+            borrowers[index] = lastBorrower;
+            borrowerIndex[lastBorrower] = index; // Update index for the swapped borrower
+        }
+        // Clean up and remove the last entry.
+        borrowers.pop();
+        delete borrowerIndex[borrower];
+        delete totalBorrowedUsers[borrower];
+        delete netBorrowedUsers[borrower];
+    }
+
+    function addLenderIfNotExists(address lender) external {
+        require(lender != address(0), "Invalid lender address");
+
+        if (lenderIndex[lender] != 0 || (lenders.length != 0 && lenders[lenderIndex[lender]] == lender)) {
+            return; // Lender already exists in the list
+        }
+
+        // Add the lender to the list and store its index.
+        lenders.push(lender);
+        lenderIndex[lender] = lenders.length - 1;
+    }
+
+    function deleteLender(address lender) external {
+        require(lender != address(0), "Invalid lender address");
+
+        uint256 index = lenderIndex[lender];
+        if (index >= lenders.length || lenders[index] != lender) {
+            return; // Lender is not in the list
+        }
+
+
+        uint256 lastIndex = lenders.length - 1;
+        if (index != lastIndex) {
+            // Swap the lender to delete with the last lender.
+            address lastLender = lenders[lastIndex];
+            lenders[index] = lastLender;
+            lenderIndex[lastLender] = index; // Update index for the swapped lender
+        }
+
+        // Clean up and remove the last entry.
+        lenders.pop();
+        delete lenderIndex[lender];
+        delete totalSuppliedUsers[lender];
+    }
 
     function transfer(uint256 amount) external payable {
         require(msg.value == amount, "[*ERROR*] Incorrect ETH amount sent!");
@@ -270,106 +370,6 @@ contract LendingPool is ReentrancyGuard {
             total += totalSuppliedUsers[lenders[i]];
         }
         return total;
-    }
-
-    function isLender(address lender) public view returns (bool) {
-        if (lenderIndex[lender] == address(0)) {
-            return false;
-        }
-        if (totalSuppliedUsers[lender] == 0) {
-            delete totalSuppliedUsers[lender];
-            return false;
-        }
-        return true;
-    }
-
-    function isBorrower(address borrower) public view returns (bool) {
-        if (borrowerIndex[borrower] == address(0)) {
-            return false;
-        }
-        if (totalBorrowedUsers[borrower] == 0) {
-            delete totalBorrowedUsers[borrower];
-            return false;
-        }
-        return true;
-    }
-
-    function getBorrowerList() public view returns (address[] memory) {
-        return borrowers;
-    }
-
-    function getLenderList() public view returns (address[] memory) {
-        return lenders;
-    }
-
-    function addBorrowerIfNotExists(address borrower) external {
-        require(borrower != address(0), "Invalid borrower address");
-
-        // Check if the borrower is already in the list.
-        if (borrowerIndex[borrower] != 0 || (borrowers.length != 0 && borrowers[borrowerIndex[borrower]] == borrower)) {
-            return; // Borrower already exists in the list
-        }
-
-        // Add the borrower to the list and store its index.
-        borrowers.push(borrower);
-        borrowerIndex[borrower] = borrowers.length - 1;
-    }
-
-
-    function deleteBorrower(address borrower) external {
-        require(borrower != address(0), "Invalid borrower address");
-
-        uint256 index = borrowerIndex[borrower];
-        if (index >= borrowers.length || borrowers[index] != borrower) {
-            return; // Borrower is not in the list
-        }
-        uint256 lastIndex = borrowers.length - 1;
-        if (index != lastIndex) {
-            // Swap the borrower to delete with the last borrower.
-            address lastBorrower = borrowers[lastIndex];
-            borrowers[index] = lastBorrower;
-            borrowerIndex[lastBorrower] = index; // Update index for the swapped borrower
-        }
-        // Clean up and remove the last entry.
-        borrowers.pop();
-        delete borrowerIndex[borrower];
-        delete totalBorrowedUsers[borrower];
-        delete netBorrowedUsers[borrower];
-    }
-
-    function addLenderIfNotExists(address lender) external {
-        require(lender != address(0), "Invalid lender address");
-
-        if (lenderIndex[lender] != 0 || (lenders.length != 0 && lenders[lenderIndex[lender]] == lender)) {
-            return; // Lender already exists in the list
-        }
-
-        // Add the lender to the list and store its index.
-        lenders.push(lender);
-        lenderIndex[lender] = lenders.length - 1;
-    }
-
-
-    function deleteLender(address lender) external {
-        require(lender != address(0), "Invalid lender address");
-
-        uint256 index = lenderIndex[lender];
-        if (index >= lenders.length || lenders[index] != lender) {
-            return; // Lender is not in the list
-        }
-
-        uint256 lastIndex = lenders.length - 1;
-        if (index != lastIndex) {
-            // Swap the lender to delete with the last lender.
-            address lastLender = lenders[lastIndex];
-            lenders[index] = lastLender;
-            lenderIndex[lastLender] = index; // Update index for the swapped lender
-        }
-
-        // Clean up and remove the last entry.
-        lenders.pop();
-        delete lenderIndex[lender];
-        delete totalSuppliedUsers[lender];
     }
 
 }

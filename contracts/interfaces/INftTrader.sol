@@ -53,7 +53,7 @@ interface INftTrader {
     function viewListing(address collection, uint256 tokenId) external view returns (
         address seller,
         address collectionAddr,
-        uint256 tokenId,
+        uint256 token,
         uint256 basePrice,
         uint256 auctionStarted,
         uint256 auctionEnds,

@@ -1,7 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
 
 interface ICollateralManager {
+
+    struct Nft {
+        address collectionAddress;
+        uint256 tokenId;
+        IERC721 nftContract;
+        bool isLiquidatable; // Indicates if the NFT is eligible for liquidation
+    }
+
     // Events
     event NFTListed(
         address indexed borrower,
@@ -49,7 +59,7 @@ interface ICollateralManager {
 
     function getliquidatableCollateral(
         address borrower
-    ) external returns (Nft[] memory); // Use `Nft[]` as per the contract.
+    ) external returns (Nft[]); // Use `Nft[]` as per the contract.
 
     function getCollateralValue(address borrower) external returns (uint256);
 
