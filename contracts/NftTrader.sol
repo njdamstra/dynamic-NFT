@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {ILendingPool} from "../interfaces/ILendingPool.sol";
+import {ILendingPool} from "./interfaces/ILendingPool.sol";
 
 contract NftTrader {
     mapping(address => mapping(uint256 => Listing)) public listings; // Listing struct has the price and seller (collateralManager contract) of the nft to be liquidated

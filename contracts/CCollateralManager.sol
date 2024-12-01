@@ -3,8 +3,7 @@ pragma solidity ^0.8.0;
 
 import {LendingPool} from "./CLendingPool.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "./NftValues.sol";
-import "./NftTrader.sol";
+
 import {INftTrader} from "./interfaces/INftTrader.sol";
 import {INftValues} from "./interfaces/INftValues.sol";
 import {ILendingPool} from "./interfaces/ILendingPool.sol";

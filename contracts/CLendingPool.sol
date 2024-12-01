@@ -3,10 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol"; // added for security
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "./CCollateralManager.sol";
-import {IDBToken} from "../interfaces/IDBToken.sol";
-import {ILPToken} from "../interfaces/ILPToken.sol";
-import {ICollateralManager} from "../interfaces/ICollateralManager.sol";
+
+import {ICollateralManager} from "./interfaces/ICollateralManager.sol";
 
 
 contract LendingPool is ReentrancyGuard {
