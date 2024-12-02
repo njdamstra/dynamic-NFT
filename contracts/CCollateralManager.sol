@@ -192,7 +192,7 @@ contract CollateralManager {
         collateralProfile.nftList.push(nft);
         collateralProfile.nftListLength++;
 
-        registerNft(collectionAddress, tokenId); // sends to NftValues to add to list of NFTs it keeps track of
+        registerNft(collectionAddress); // sends to NftValues to add to list of NFTs it keeps track of
         nftContract.approve(nftTraderAddress, tokenId); // Approves NftTrader to transfer NFT on CM's behalf -N
         //TODO emit value
         emit CollateralAdded(borrower, collectionAddress, tokenId,1,block.timestamp);
@@ -289,9 +289,8 @@ contract CollateralManager {
     }
 
     // TODO NATE:
-    function registerNft(address collection, uint256 tokenId) pure private {
-        //iNftTrader.addCollection(collection);
-        return;
+    function registerNft(address collection) private {
+        iNftValues.addCollection(collection);
     }
 
 

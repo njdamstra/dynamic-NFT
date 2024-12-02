@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-import {INftValues} from "./interfaces/INftValues.sol";
+import {INftValues} from "../interfaces/INftValues.sol";
 
 
 contract MockOracle {
@@ -11,7 +11,7 @@ contract MockOracle {
     INftValues public iNftValues;
     address public owner;
 
-    constructor {
+    constructor() {
         owner = msg.sender;
     }
 
@@ -38,7 +38,7 @@ contract MockOracle {
     // manually set the floor price for a collection; this doesn't automatically update NftValues bc we're simulating how real oracles work
     function manualSetCollection(address collectionAddr, uint256 floorPrice, bool safe) external onlyOwner {
         floorPrices[collectionAddr] = floorPrice;
-        safeCollections[collectionAdd] = safe;
+        safeCollections[collectionAddr] = safe;
     }
 
     // Get the floor price for a collection
@@ -48,7 +48,7 @@ contract MockOracle {
 
     // updates all of NftValues collections floor price for collections who's floor price changed
     function updateAllFloorPrices() public {
-        []address collections = iNftValues.getCollectionAddrList();
+        address[] memory collections = iNftValues.getCollectionAddrList();
         for (uint i = 0; i < collections.length; i++) {
             updateFloorPrice(collections[i]);
         }
@@ -56,7 +56,7 @@ contract MockOracle {
 
     // updates NftValues collection if its Floor Price changed
     function updateFloorPrice(address collectionAddr) public {
-        if (floorPrices[collectionAddr] == 0 || iNftValues.getFloorPrice == floorPrices[collectionAddr]) {
+        if (floorPrices[collectionAddr] == 0 || iNftValues.getFloorPrice(collectionAddr) == floorPrices[collectionAddr]) {
             return; // nothing to update
         } else {
             iNftValues.updateFloorPrice(collectionAddr, floorPrices[collectionAddr]);
@@ -65,7 +65,7 @@ contract MockOracle {
 
     // listens to NftValues if it requests Floor Price for a collection it needs info for
     function requestFloorPrice(address collectionAddr) external onlyNftValues {
-        if (floorPrices[collectionAddr] == 0 || !safeCollection[collectionAddr]) {
+        if (floorPrices[collectionAddr] == 0 || !safeCollections[collectionAddr]) {
             iNftValues.updateCollection(collectionAddr, 0, false);
         } else {
             iNftValues.updateCollection(collectionAddr, floorPrices[collectionAddr], true);

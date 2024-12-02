@@ -51,7 +51,7 @@ contract NftValues {
         require(owner == msg.sender, "Only the owner can call this function");
         require(_collateralManagerAddr != address(0), "Invalid address");
         collateralManager = _collateralManagerAddr;
-        useOnChainOracle = _useMockOracle;
+        useOnChainOracle = _useOnChainOracle;
         if (useOnChainOracle) {
             onChainOracle = _onChainOracle;
             iOnChainOracle = IMockOracle(onChainOracle);
@@ -143,7 +143,6 @@ contract NftValues {
     }
 
     function getFloorPrice(address collection) public view returns (uint256) {
-        if (getCollection(collection))
         return getCollection(collection).floorPrice;
     }
 
@@ -190,7 +189,7 @@ contract NftValues {
             col.notPending = true;
             col.safe = safe;
             col.floorPrice = floorPrice;
-            emit FloorPriceUpdated(collectionAddr)
+            emit FloorPriceUpdated(collectionAddr, floorPrice, safe, block.timestamp);
         }
     }
 

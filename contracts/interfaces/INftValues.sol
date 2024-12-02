@@ -22,7 +22,7 @@ interface INftValues {
     function getCollectionAddrList() external view returns (address[] memory);
     function getCollection(address collectionAddr) external view returns (address, uint256); // Returns collection address and floor price
     function getFloorPrice(address collectionAddr) external view returns (uint256);
-    function collectionStatus(address collection) public view returns (uint);
+    function collectionStatus(address collection) external view returns (uint);
 
     // Administrative Functions
     function initialize(address _collateralManagerAddr, bool _useOnChainOracle, address _onChainOracle) external;
