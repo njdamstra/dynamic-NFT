@@ -58,8 +58,8 @@ async function main() {
     await MockOracle.connect(deployer).manualSetCollection(deployedAddresses.BadNft, initial_BNft_FP, BNft_safe);
 
     const FP_GNFT = await MockOracle.getFloorPrice(deployedAddresses.GoodNft);
-    console.log("floor price returned from MockOracle should be 10: (${FP_GNFT}).");
-    
+    console.log("floor price returned from MockOracle should be 10: ", FP_GNFT.toString());
+
 
     ///// ** WHAT TO DO LATER **
 
@@ -71,26 +71,26 @@ async function main() {
     
     
 
-    // Example: Mint NFTs for lender1 and borrower1
+    // Example: Mint NFTs for borrower1 and borrower2
     console.log("Minting NFTs...");
     await GNft.connect(deployer).mint(borrower1.address);
     await GNft.connect(deployer).mint(borrower2.address);
     console.log(`Minted NFTs for borrower1 (${borrower1.address}) and borrower2 (${borrower2.address}).`);
 
-    // Example: calling oracle to update floor price
-    console.log("Updating floor prices using mockUpdateFP.js...");
+    // Example: lender1 supplies pool with 10 ether
+    const amountLending = 10; // 10 Eth in Wei
+
     try {
-        execSync("node mockScripts/mockUpdateFP.js", { stdio: "inherit" });
-        console.log("Floor prices updated successfully!");
+        const tx = await Portal.connect(lender2).supply(10, { value: amountLending });
+        const receipt = await tx.wait();
+
+        const poolBalance = await LendingPool.getPoolBalance();
+
+        console.log("the lending pools balance: ", poolBalance.toString());
+        console.log("Supplied successfully! Tx Hash:", receipt.transactionHash);
     } catch (error) {
-        console.error("Error calling mockUpdateFP.js:", error.message);
+        console.error("Error while supplying 10 ether from lender1:", error);
     }
-    // Scenario 1: Mint NFTs for users
-    console.log("Minting NFTs...");
-    await GoodNft.connect(deployer).mint(user1.address);
-    await GoodNft.connect(deployer).mint(user2.address);
-    console.log(`User1 now owns NFT ID 0 from GoodNft.`);
-    console.log(`User2 now owns NFT ID 1 from GoodNft.`);
 
     // Scenario 2: Add NFT as collateral
     console.log("Adding NFT as collateral...");

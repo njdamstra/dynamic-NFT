@@ -47,10 +47,12 @@ contract UserPortal is ReentrancyGuard {
     /////////// ** LENDER FUNCTIONS ** /////////////
 
     function supply(uint256 amount) external payable nonReentrant {
-        require(msg.value == amount, "Incorrect ETH amount sent!");
-
+        
+        require(msg.value == amount, "Incorrect WEI amount sent!");
+        require(msg.value > 0, "[*ERROR*] msg.value: Cannot send 0 WEI");
+        require(amount > 0, "[*ERROR*] amount: Cannot send 0 WEI");
         // Forward ETH to LendingPool and call `supply`
-        iPool.supply{value: amount}(msg.sender, amount);
+        iPool.supply{ value: amount }(msg.sender, amount);
     }
 
 

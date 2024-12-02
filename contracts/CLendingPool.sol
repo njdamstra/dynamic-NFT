@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+// import "hardhat/console.log";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol"; // added for security
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./CCollateralManager.sol";
@@ -187,19 +188,20 @@ contract LendingPool is ReentrancyGuard {
     }
 
     fallback() external payable {
-        require(msg.value > 0, "[*ERROR*] Cannot send zero ETH!");
+        require(msg.value > 0, "[*ERROR*] fallback: Cannot send zero ETH!");
         poolBalance += msg.value;
     }
 
     receive() external payable {
-        require(msg.value > 0, "[*ERROR*] Cannot send zero ETH!");
+        require(msg.value > 0, "[*ERROR*] receive: Cannot send zero ETH!");
         poolBalance += msg.value;
     }
 
     // Allows users to supply ETH to the pool
     function supply(address lender, uint256 amount) external payable onlyPortal {
-        require(msg.value == amount, "[*ERROR*] Incorrect amount of ETH supplied!");
-        require(amount > 0, "[*ERROR*] Cannot supply zero ETH!");
+        // console.log("pool.supply: lender:(${lender}), amount: ", amount)
+        require(msg.value == amount, "[*ERROR*] supply: Incorrect amount of ETH supplied!");
+        require(amount > 0, " [*ERROR*] supply: Cannot supply zero ETH!");
 
         if (isLender(lender)) {
             totalSuppliedUsers[lender] += amount;
@@ -408,6 +410,10 @@ contract LendingPool is ReentrancyGuard {
 
     function getTotalBorrowedUsers(address borrower) public view returns (uint256) {
         return totalBorrowedUsers[borrower];
+    }
+
+    function getPoolBalance() external view returns (uint256) {
+        return poolBalance;
     }
 
 }
