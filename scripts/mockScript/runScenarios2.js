@@ -52,6 +52,8 @@ async function main() {
     //} catch (error) {
     //    console.error("Error calling mockUpdateFP.js:", error.message);
     //}
+
+    console.log("")
 }
 
 main()

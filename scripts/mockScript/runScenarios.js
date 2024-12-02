@@ -34,7 +34,7 @@ async function main() {
     // Scenario 2: Add NFT as collateral
     console.log("Adding NFT as collateral...");
     await GoodNft.connect(user1).setApprovalForAll(deployedAddresses.CCollateralManager, true);
-    const collateralManager = await ethers.getContractAt("CCollateralManager", deployedAddresses.CCollateralManager);
+    const collateralManager = await ethers.getContractAt("ICollateralManager", deployedAddresses.CCollateralManager);
     await collateralManager.connect(user1).provideCollateral(GoodNft.address, 0);
     console.log("User1 provided collateral with GoodNft ID 0.");
 

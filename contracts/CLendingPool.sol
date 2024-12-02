@@ -17,14 +17,14 @@ contract LendingPool is ReentrancyGuard {
     mapping(address => uint256) public totalBorrowedUsers; // Tracks ETH (with interest) currently borrowed by users
     mapping(address => uint256) public netBorrowedUsers; // Tracks ETH (without interest) currently borrowed by borrowers
 
-    struct BorrowersInterest {
-        address borrower;
-        uint256 interestRate; // the set interest rate we have them
-        uint256 initalTimeStamp; // the start of there initial loan
+    struct InterestProfile {
+        uint256 periodicalInterest; // the set interest rate we have them
+        uint256 initalTimeStamp; // the start of their initial loan
         uint256 lastUpdated; // last time interest was added to this users loan
-        uint256 period; // how often we apply the interest rate.
+        uint256 periodDuration; // how often we update the interest rate.
     }
-    mapping(address => BorrowersInterest) public InterestProfiles;
+
+    mapping(address => InterestProfile) public borrowersInterestProfiles;
 
     uint256 public poolBalance;      // Tracks current ETH in the pool
 
@@ -140,6 +140,7 @@ contract LendingPool is ReentrancyGuard {
         delete borrowerIndex[borrower];
         delete totalBorrowedUsers[borrower];
         delete netBorrowedUsers[borrower];
+        delete borrowersInterestProfiles[borrower];
     }
 
     function addLenderIfNotExists(address lender) public {
@@ -259,16 +260,16 @@ contract LendingPool is ReentrancyGuard {
         if (isBorrower(borrower)) {
             totalBorrowedUsers[borrower] += newLoan;
             netBorrowedUsers[borrower] += amount;
+            // update interest Profile
         } else {
             addBorrowerIfNotExists(borrower);
             totalBorrowedUsers[borrower] += newLoan;
             netBorrowedUsers[borrower] += amount;
-            BorrowersInterest profile = new BorrowersInterest;
-            profile.borrower = borrower;
-            profile.interestRate = interestRate;
-            profile.initialTimeStamp = block.timestamp;
-            profile.period = 30; // idk how time stamps works, but this is 30 days
-            InterestProfiles[borrower] = profile;
+
+            // create interest profile
+            borrowersInterestProfiles[borrower].periodicalInterest = 2; // 2 percent interest per period
+            borrowersInterestProfiles[borrower].initalTimeStamp = block.timestamp;
+            borrowersInterestProfiles[borrower].periodDuration = 30 * 24 * 60 * 60; // 30 days in seconds
         }
 
         // send eth to borrower
@@ -336,7 +337,8 @@ contract LendingPool is ReentrancyGuard {
         // but im sure it works
         // the amount arg is the exact amount that was transfered over to the pool
         // the nftValue variable is the floor price we used for the nft
-        // the rest of this function should be 1) updating how much the borrower owes
+        // the rest of this function should be
+        // 1) updating how much the borrower owes
         // 2) delegating the extra profit to the lenders
         // 3) updating the total amount in the pool with everything else you didn't give to the lenders/
         // 4) love u pookie
@@ -381,13 +383,19 @@ contract LendingPool is ReentrancyGuard {
     }
 
     function updateBorrowersInterest() public {
-        uint256 timeNow = block.timestamp;
-        for (uint i = 0; i < borrowers.length; i++) {
-            BorrowersInterest memory profile = InterestProfiles[borrowers[i]];
-            if (profile.lastUpdated + profile.period <= timeNow) {
-                // apply more interest!
-            }
+        for (uint256 i = 0; i < borrowers.length; i++) {
+            address borrower = borrowers[i];
 
+            // Check if the period duration has passed for the borrower
+            if (borrowersInterestProfiles[borrower].periodDuration < borrowersInterestProfiles[borrower].initalTimeStamp + block.timestamp) {
+                // Calculate interest as 2% of the total borrowed amount
+                uint256 borrowedAmount = totalBorrowedUsers[borrower];
+                uint256 interest = (borrowedAmount * borrowersInterestProfiles[borrower].periodicalInterest) / 100;
+
+                // Update the borrowed amount by adding the calculated interest
+                totalBorrowedUsers[borrower] += interest;
+
+            }
         }
     }
 
