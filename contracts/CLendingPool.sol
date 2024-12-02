@@ -394,7 +394,6 @@ contract LendingPool is ReentrancyGuard {
 
                 // Update the borrowed amount by adding the calculated interest
                 totalBorrowedUsers[borrower] += interest;
-
             }
         }
     }
