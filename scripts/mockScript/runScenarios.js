@@ -81,7 +81,7 @@ async function main() {
     const amountLending = 10; // 10 Eth in Wei
 
     try {
-        const tx = await Portal.connect(lender2).supply(10, { value: amountLending });
+        const tx = await Portal.connect(lender2).supply(amountLending, { value: amountLending });
         const receipt = await tx.wait();
 
         const poolBalance = await LendingPool.getPoolBalance();
@@ -94,29 +94,43 @@ async function main() {
 
     // Scenario 2: Add NFT as collateral
     console.log("Adding NFT as collateral...");
-    await GoodNft.connect(user1).setApprovalForAll(deployedAddresses.CCollateralManager, true);
-    const collateralManager = await ethers.getContractAt("ICollateralManager", deployedAddresses.CCollateralManager);
-    await collateralManager.connect(user1).provideCollateral(GoodNft.address, 0);
-    console.log("User1 provided collateral with GoodNft ID 0.");
-
-    // Scenario 3: Call mockUpdateFP.js to update prices off-chain
-    console.log("Updating floor prices using mockUpdateFP.js...");
     try {
-        execSync("node mockScripts/mockUpdateFP.js", { stdio: "inherit" });
-        console.log("Floor prices updated successfully!");
+        await GNft.connect(borrower1).setApprovalForAll(deployedAddresses.UserPortal, true);
+        await Portal.connect(borrower1).addCollateral(deployedAddresses.GoodNft, 0);
+        console.log("borrower1 provided collateral with GoodNft ID 0.");
     } catch (error) {
-        console.error("Error calling mockUpdateFP.js:", error.message);
+        console.error("borrower1 failed to provide his GoodNft tokenId 1 to his collateral profile:", error);
+    }
+    console.log("get borrower1's Collateral Profile...");
+    try {
+        const profile = await CollateralManager.getCollateralProfile(borrower1.address);
+        const nft_struct = profile.nftList[0];
+        console.log("Borrower1 stored nft: ", nft_struct.collectionAddress.toString());
+    } catch (error) {
+        console.error("failed to get borrower1's collateral profile from CM:", error);
+    }
+    console.log("get NftValue Collection with added GoodNft");
+    try {
+        const collection_struct = await NftValues.getCollection(deployedAddresses.GoodNft);
+        console.log("NftValues NftCollection struct:");
+        console.log("collection addr:", collection_struct.collection.toString());
+        console.log("floorPrice:", collection_struct.floorPrice.toString());
+        console.log("safe:", collection_struct.safe.toString());
+        console.log("pending", collection_struct.pending.toString());
+        console.log("notPending:", collection_struct.notPending.toString());
+    } catch (error) {
+        console.error("failed to get NftValues Collection struct:", error);
     }
 
-    // Scenario 4: Simulate borrowing funds
-    console.log("Borrowing funds...");
-    const borrowAmount = ethers.parseEther("5");
-    await CLendingPool.connect(user1).borrow(borrowAmount);
-    console.log(`User1 borrowed ${borrowAmount} ETH.`);
+    // // Scenario 4: Simulate borrowing funds
+    // console.log("Borrowing funds...");
+    // const borrowAmount = ethers.parseEther("5");
+    // await CLendingPool.connect(user1).borrow(borrowAmount);
+    // console.log(`User1 borrowed ${borrowAmount} ETH.`);
 
-    // Scenario 5: Verify updated prices in NftValues
-    const updatedPrice = await NftValues.getFloorPrice(GoodNft.address); // Assuming a getFloorPrice function exists
-    console.log(`Updated floor price for GoodNft ID 0: ${ethers.formatEther(updatedPrice)} ETH.`);
+    // // Scenario 5: Verify updated prices in NftValues
+    // const updatedPrice = await NftValues.getFloorPrice(GoodNft.address); // Assuming a getFloorPrice function exists
+    // console.log(`Updated floor price for GoodNft ID 0: ${ethers.formatEther(updatedPrice)} ETH.`);
 }
 
 main()

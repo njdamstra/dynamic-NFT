@@ -13,6 +13,8 @@ contract LendingPool is ReentrancyGuard {
     address[] public borrowers;
     mapping(address => uint) public borrowerIndex;
     mapping(address => uint) public lenderIndex;
+    mapping(address => bool) public isBorrowerMapping;
+    mapping(address => bool) public isLenderMapping;
 
     mapping(address => uint256) public totalSuppliedUsers; // Tracks ETH (without interest) supplied by lenders
     mapping(address => uint256) public totalBorrowedUsers; // Tracks ETH (with interest) currently borrowed by users
@@ -79,25 +81,11 @@ contract LendingPool is ReentrancyGuard {
     event Liquidated(address indexed borrower, uint256 tokenId, uint256 amountRecovered);
 
     function isLender(address lender) public returns (bool) {
-        if (lenderIndex[lender] == 0) {
-            return false;
-        }
-        if (totalSuppliedUsers[lender] == 0) {
-            delete totalSuppliedUsers[lender];
-            return false;
-        }
-        return true;
+        return isLenderMapping[lender];
     }
 
     function isBorrower(address borrower) public returns (bool) {
-        if (borrowerIndex[borrower] == 0) {
-            return false;
-        }
-        if (totalBorrowedUsers[borrower] == 0) {
-            delete totalBorrowedUsers[borrower];
-            return false;
-        }
-        return true;
+        return isBorrowerMapping[borrower];
     }
 
     function getBorrowerList() public view returns (address[] memory) {
@@ -109,26 +97,30 @@ contract LendingPool is ReentrancyGuard {
     }
 
     function addBorrowerIfNotExists(address borrower) public {
+        // require(msg.sender == address(this) || msg.sender == collateralManagerAddr, "only Pool and CM can add borrower to list");
         require(borrower != address(0), "Invalid borrower address");
 
         // Check if the borrower is already in the list.
-        if (borrowerIndex[borrower] != 0 || (borrowers.length != 0 && borrowers[borrowerIndex[borrower]] == borrower)) {
+        if (isBorrowerMapping[borrower]) {
             return; // Borrower already exists in the list
         }
 
         // Add the borrower to the list and store its index.
         borrowers.push(borrower);
         borrowerIndex[borrower] = borrowers.length - 1;
+        isBorrowerMapping[borrower] = true;
     }
 
 
     function deleteBorrower(address borrower) public {
+        // require(msg.sender == address(this) || msg.sender == collateralManagerAddr, "only Pool and CM can delete borrower");
         require(borrower != address(0), "Invalid borrower address");
 
         uint256 index = borrowerIndex[borrower];
-        if (index >= borrowers.length || borrowers[index] != borrower) {
+        if (index == 0) {
             return; // Borrower is not in the list
         }
+        index--;
         uint256 lastIndex = borrowers.length - 1;
         if (index != lastIndex) {
             // Swap the borrower to delete with the last borrower.
@@ -138,13 +130,15 @@ contract LendingPool is ReentrancyGuard {
         }
         // Clean up and remove the last entry.
         borrowers.pop();
-        delete borrowerIndex[borrower];
+        borrowerIndex[borrower] = 0;
         delete totalBorrowedUsers[borrower];
         delete netBorrowedUsers[borrower];
         delete borrowersInterestProfiles[borrower];
+        isBorrowerMapping[borrower] = false;
     }
 
     function addLenderIfNotExists(address lender) public {
+        // require(msg.sender == address(this) || msg.sender == collateralManagerAddr, "only Pool and CM can add lender to list");
         require(lender != address(0), "Invalid lender address");
 
         if (lenderIndex[lender] != 0 || (lenders.length != 0 && lenders[lenderIndex[lender]] == lender)) {
@@ -157,14 +151,15 @@ contract LendingPool is ReentrancyGuard {
     }
 
     function deleteLender(address lender) public {
+        // require(msg.sender == address(this) || msg.sender == collateralManagerAddr, "only Pool and CM can delete lender from list");
         require(lender != address(0), "Invalid lender address");
 
         uint256 index = lenderIndex[lender];
-        if (index >= lenders.length || lenders[index] != lender) {
-            return; // Lender is not in the list
+        if (index == 0) {
+            return; // Borrower is not in the list
         }
 
-
+        index--;
         uint256 lastIndex = lenders.length - 1;
         if (index != lastIndex) {
             // Swap the lender to delete with the last lender.
@@ -175,8 +170,9 @@ contract LendingPool is ReentrancyGuard {
 
         // Clean up and remove the last entry.
         lenders.pop();
-        delete lenderIndex[lender];
+        lenderIndex[lender] = 0;
         delete totalSuppliedUsers[lender];
+        isLenderMapping[lender] = false;
     }
 
     function transfer(uint256 amount) external payable {
@@ -259,20 +255,19 @@ contract LendingPool is ReentrancyGuard {
 
         poolBalance -= amount;
 
-        if (isBorrower(borrower)) {
-            totalBorrowedUsers[borrower] += newLoan;
-            netBorrowedUsers[borrower] += amount;
-            // update interest Profile
-        } else {
-            addBorrowerIfNotExists(borrower);
-            totalBorrowedUsers[borrower] += newLoan;
-            netBorrowedUsers[borrower] += amount;
+        addBorrowerIfNotExists(borrower);
+        totalBorrowedUsers[borrower] += newLoan;
+        netBorrowedUsers[borrower] += amount;
 
-            // create interest profile
-            borrowersInterestProfiles[borrower].periodicalInterest = 2; // 2 percent interest per period
-            borrowersInterestProfiles[borrower].initalTimeStamp = block.timestamp;
-            borrowersInterestProfiles[borrower].periodDuration = 30 * 24 * 60 * 60; // 30 days in seconds
+        InterestProfile storage iProfile = borrowersInterestProfiles[borrower];
+
+        if (iProfile.initalTimeStamp == 0) {
+            iProfile.periodicalInterest = 2; // 2 percent interest per period
+            iProfile.initalTimeStamp = block.timestamp;
+            iProfile.lastUpdated = iProfile.initalTimeStamp;
+            iProfile.periodDuration = 30 * 24 * 60 * 60; // 30 days in seconds
         }
+        updateBorrowersInterest();
 
         // send eth to borrower
         (bool success, ) = borrower.call{value: amount}("");
@@ -295,7 +290,7 @@ contract LendingPool is ReentrancyGuard {
 
         uint256 totalDebt = totalBorrowedUsers[borrower];
         uint256 netDebt = netBorrowedUsers[borrower];
-        require(amount <= totalDebt, "[*ERROR*] Amount exceeds total debt");
+        require(amount <= totalDebt, "[*ERROR*] Amount exceeds total debt"); // maybe get rid rid of this and include this as supply
 
         if (amount >= netDebt) {
             // Calculate the excess amount (interest)
@@ -363,12 +358,31 @@ contract LendingPool is ReentrancyGuard {
     function getUserAccountData(address user) public view returns (
         uint256 totalDebt,
         uint256 netDebt,
-        uint256 totalSupplied
+        uint256 totalSupplied,
+        uint256 collateralValue,
+        uint256 healthFactor
     ) {
         totalDebt = totalBorrowedUsers[user];
         netDebt = netBorrowedUsers[user];
         totalSupplied = totalSuppliedUsers[user];
-        return (totalDebt, netDebt, totalSupplied);
+        collateralValue = iCollateralManager.getCollateralValue(user);
+        healthFactor = calculateHealthFactor(totalDebt, collateralValue);
+        // InterestProfile memory iProfile = borrowersInterestProfiles[user];
+        return (totalDebt, netDebt, totalSupplied, collateralValue, healthFactor);
+    }
+
+    function getInterestProfile(address borrower) public view returns (
+        uint256 periodicalInterest,
+        uint256 initalTimeStamp,
+        uint256 lastUpdated,
+        uint256 periodDuration
+    ) {
+        InterestProfile storage iProfile = borrowersInterestProfiles[borrower];
+        periodicalInterest = iProfile.periodicalInterest;
+        initalTimeStamp = iProfile.initalTimeStamp;
+        lastUpdated = iProfile.lastUpdated;
+        periodDuration = iProfile.periodDuration;
+        return (periodicalInterest, initalTimeStamp, lastUpdated, periodDuration);
     }
 
     function allocateInterest(uint256 amount) private {
@@ -387,16 +401,17 @@ contract LendingPool is ReentrancyGuard {
     function updateBorrowersInterest() public {
         for (uint256 i = 0; i < borrowers.length; i++) {
             address borrower = borrowers[i];
+            InterestProfile storage iProfile = borrowersInterestProfiles[borrower];
+            uint256 timeNow = block.timestamp;
 
             // Check if the period duration has passed for the borrower
-            if (borrowersInterestProfiles[borrower].periodDuration < borrowersInterestProfiles[borrower].initalTimeStamp + block.timestamp) {
+            if (iProfile.periodDuration + iProfile.lastUpdated <= timeNow) {
                 // Calculate interest as 2% of the total borrowed amount
                 uint256 borrowedAmount = totalBorrowedUsers[borrower];
-                uint256 interest = (borrowedAmount * borrowersInterestProfiles[borrower].periodicalInterest) / 100;
-
+                uint256 interest = (borrowedAmount * iProfile.periodicalInterest) / 100;
                 // Update the borrowed amount by adding the calculated interest
                 totalBorrowedUsers[borrower] += interest;
-
+                iProfile.lastUpdated = timeNow;
             }
         }
     }
@@ -416,5 +431,4 @@ contract LendingPool is ReentrancyGuard {
     function getPoolBalance() external view returns (uint256) {
         return poolBalance;
     }
-
 }

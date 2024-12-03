@@ -11,6 +11,11 @@ contract MockOracle {
     INftValues public iNftValues;
     address public owner;
 
+    event SetCollection(address indexed collectionAddr, uint256 floorPrice, bool safe);
+    event UpdateCollection(address indexed collectionAddr, uint256 newFloorPrice);
+    event RequestFromNftValues(address indexed collectionAddr);
+    event SentUpdateToNftValues(address indexed collectionAdd, uint256 floorPrice, bool safe);
+
     constructor() {
         owner = msg.sender;
     }
@@ -33,12 +38,14 @@ contract MockOracle {
     function manualUpdateFloorPrice(address collectionAddr, uint256 floorPrice) external onlyOwner {
         floorPrices[collectionAddr] = floorPrice;
         updateAllFloorPrices();
+        emit UpdateCollection(collectionAddr, floorPrice);
     }
 
     // manually set the floor price for a collection; this doesn't automatically update NftValues bc we're simulating how real oracles work
     function manualSetCollection(address collectionAddr, uint256 floorPrice, bool safe) external onlyOwner {
         floorPrices[collectionAddr] = floorPrice;
         safeCollections[collectionAddr] = safe;
+        emit SetCollection(collectionAddr, floorPrice, safe);
     }
 
     // Get the floor price for a collection
@@ -60,15 +67,19 @@ contract MockOracle {
             return; // nothing to update
         } else {
             iNftValues.updateFloorPrice(collectionAddr, floorPrices[collectionAddr]);
+            emit SentUpdateToNftValues(collectionAddr, floorPrices[collectionAddr], safeCollections[collectionAddr]);
         }
     }
 
     // listens to NftValues if it requests Floor Price for a collection it needs info for
     function requestFloorPrice(address collectionAddr) external onlyNftValues {
+        emit RequestFromNftValues(collectionAddr);
         if (floorPrices[collectionAddr] == 0 || !safeCollections[collectionAddr]) {
             iNftValues.updateCollection(collectionAddr, 0, false);
+            emit SentUpdateToNftValues(collectionAddr, 0, false);
         } else {
             iNftValues.updateCollection(collectionAddr, floorPrices[collectionAddr], true);
+            emit SentUpdateToNftValues(collectionAddr, floorPrices[collectionAddr], true);
         }
     }
 

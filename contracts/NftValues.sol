@@ -171,7 +171,7 @@ contract NftValues {
         if (index >= collectionList.length && collectionList[index].collection != collectionAddr) {
             return; // not in the list of collections
         }
-        if (newFloorPrice <= 0) {
+        if (newFloorPrice < 0) {
             return; // not a valid floor price (must be more than 0)
         }
         // Update the floor price
@@ -181,9 +181,9 @@ contract NftValues {
 
 
     function updateCollection(address collectionAddr, uint256 floorPrice, bool safe) external {
-        require(msg.sender == owner || msg.sender == onChainOracle, "Don't have access rights to initiate Collection");
+        require(msg.sender == owner || msg.sender == onChainOracle, "Don't have access rights to update Collection");
         require(collectionAddr != address(0), "Invalid collection address");
-        NftCollection memory col = collectionList[collectionIndex[collectionAddr]];
+        NftCollection storage col = collectionList[collectionIndex[collectionAddr]];
         if (col.collection == collectionAddr) {
             col.pending = false;
             col.notPending = true;

@@ -2,9 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {ILendingPool} from "../contracts/interfaces/ILendingPool.sol";
 
-contract NftTrader {
+contract NftTrader is IERC721Receiver {
     mapping(address => mapping(uint256 => Listing)) public listings; // Listing struct has the price and seller (collateralManager contract) of the nft to be liquidated
 
     struct Listing {
@@ -183,6 +184,16 @@ contract NftTrader {
     //     emit Withdrawal(destinationAddress, balances[destinationAddress]);
     //     balances[destinationAddress] = 0;
     // }
+
+    //////// ** CONTRACT MANAGER FUNCTIONS ** ///////////
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external override returns (bytes4) {
+        return this.onERC721Received.selector;
+    }
 
     receive() external payable {}
 
