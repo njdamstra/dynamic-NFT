@@ -61,7 +61,7 @@ interface ICollateralManager {
         address borrower
     ) external returns (Nft[] memory); // Use `Nft[]` as per the contract.
 
-    function getCollateralValue(address borrower) external returns (uint256);
+    function getCollateralValue(address borrower) external view returns (uint256);
 
     function getBasePrice(
         address collection,
@@ -92,5 +92,7 @@ interface ICollateralManager {
     function getNftValue(
         address collectionAddress
     ) external returns (uint256);
+
+    function updateAllLiquidatableCollateral() external;
 
 }

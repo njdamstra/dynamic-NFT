@@ -1,5 +1,6 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
+require("@nomicfoundation/hardhat-ethers");
 // require("@openzeppelin/hardhat-upgrades");
 // require("@nomicfoundation/hardhat-foundry");
 

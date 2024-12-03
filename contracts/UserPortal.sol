@@ -8,8 +8,9 @@ import {ICollateralManager} from "./interfaces/ICollateralManager.sol";
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-contract UserPortal is ReentrancyGuard {
+contract UserPortal is ReentrancyGuard, IERC721Receiver {
 
     address public CMAddr;
     address public LPAddr;
@@ -42,6 +43,12 @@ contract UserPortal is ReentrancyGuard {
     receive() external payable {}
     fallback() external payable {}
 
+    function refresh() public {
+        iTrader.endAllConcludedAuctions();
+        iPool.updateBorrowersInterest();
+        iCollateralManager.updateAllLiquidatableCollateral();
+    }
+
 
 
     /////////// ** LENDER FUNCTIONS ** /////////////
@@ -67,16 +74,14 @@ contract UserPortal is ReentrancyGuard {
     function addCollateral(address collection, uint256 tokenId) external nonReentrant {
         IERC721 nft = IERC721(collection);
         // Ensure UserPortal is approved for the NFT
-        require(nft.isApprovedForAll(msg.sender, address(this)), "UserPortal not approved!");
+        require(nft.ownerOf(tokenId) == msg.sender, "User is not the owner of this Nft");
+        require(nft.getApproved(tokenId) == address(this) || nft.isApprovedForAll(msg.sender, address(this)), "UserPortal not approved!");
 
         // Transfer the NFT from user to UserPortal
-        nft.safeTransferFrom(msg.sender, address(this), tokenId);
-
-        // Approve CollateralManager to transfer the NFT
-        nft.approve(address(iCollateralManager), tokenId);
+        nft.safeTransferFrom(msg.sender, CMAddr, tokenId);
 
         // Call addCollateral on CollateralManager
-        ICollateralManager(iCollateralManager).addCollateral(msg.sender, collection, tokenId);
+        iCollateralManager.addCollateral(msg.sender, collection, tokenId);
     }
     
     function borrow(uint256 amount) external nonReentrant {
@@ -116,6 +121,17 @@ contract UserPortal is ReentrancyGuard {
 
     function endAuction(address collection, uint256 tokenId) external {
         iTrader.endAuction(collection, tokenId);
+    }
+
+
+    //////// ** CONTRACT MANAGER FUNCTIONS ** ///////////
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external override returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 
 
