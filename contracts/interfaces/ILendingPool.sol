@@ -21,7 +21,7 @@ interface ILendingPool {
     function withdraw(address lender, uint256 amount) external;
     function borrow(address borrower, uint256 amount) external;
     function repay(address borrower, uint256 amount) external payable;
-    function liquidate(address borrower, address collection, uint256 tokenId, uint256 amount) external;
+    function liquidate(address borrower, address collection, uint256 tokenId, uint256 amount) external payable;
 
     // Data Retrieval
     function getUserAccountData(address user)
@@ -51,4 +51,5 @@ interface ILendingPool {
     function addLenderIfNotExists(address lender) external;
     function deleteLender(address lender) external;
     function getTotalBorrowedUsers(address borrower) external returns (uint256);
+    function updateBorrowersInterest() external;
 }

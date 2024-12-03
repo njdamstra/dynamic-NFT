@@ -78,7 +78,7 @@ contract LendingPool is ReentrancyGuard {
     event Withdrawn(address indexed user, uint256 amount);
     event Borrowed(address indexed user, uint256 amount);
     event Repaid(address indexed user, uint256 amount);
-    event Liquidated(address indexed borrower, uint256 tokenId, uint256 amountRecovered);
+    event Liquidated(address indexed borrower, address indexed collection, uint256 tokenId, uint256 amountRecovered);
 
     function isLender(address lender) public returns (bool) {
         return isLenderMapping[lender];
@@ -284,7 +284,8 @@ contract LendingPool is ReentrancyGuard {
     }
 
     // Allows users to repay borrowed ETH with interest
-    function repay(address borrower, uint256 amount) public payable onlyPortal {
+    function repay(address borrower, uint256 amount) public payable {
+        require(msg.sender == portal || msg.sender == address(this) || msg.sender == trader, "repayment needs to come from this contract or the portal");
         require(isBorrower(borrower), "[*ERROR*] No debt to repay!");
         require(amount > 0, "[*ERROR*] Contains no value");
 
@@ -322,12 +323,12 @@ contract LendingPool is ReentrancyGuard {
     // Liquidates an NFT if the health factor drops below 1.2
     // this function is called by CM who transfers eth to Pool and this function updates LendPool accordingly
     // TODO update according to liquidate in CM
-    function liquidate(address borrower, address collection, uint256 tokenId, uint256 amount) external onlyTrader {
+    function liquidate(address borrower, address collection, uint256 tokenId, uint256 amount) external payable onlyTrader {
         // uint256 healthFactor = collateralManager.getHealthFactor(borrower, nftId);
         // require(healthFactor < 120, "[*ERROR*] Health factor is sufficient, cannot liquidate!");
         //uint256 nftValue = iCollateralManager.getNftValue(collection);
         //TODO
-        iCollateralManager.liquidateNft(borrower, collection, tokenId,1);
+        iCollateralManager.liquidateNft(borrower, collection, tokenId, amount);
 
         // @Felix idk how you're doing the loan pool logic
         // im to drunk to figure it out rn
@@ -346,12 +347,12 @@ contract LendingPool is ReentrancyGuard {
         uint256 remainingDebt = totalDebt > debtReduction ? totalDebt - debtReduction : 0;
 
 
-        netBorrowedUsers[borrower] = remainingDebt;
-        totalBorrowedUsers[borrower] = remainingDebt;
+        // netBorrowedUsers[borrower] = remainingDebt;
+        // totalBorrowedUsers[borrower] = remainingDebt;
         // debt is repaid with liquidated amount
-        repay(borrower,amount);
+        repay(borrower, debtReduction);
 
-        emit Liquidated(borrower, tokenId, 0);
+        emit Liquidated(borrower, collection, tokenId, amount);
     }
 
     // Retrieve user account data including LP and DB tokens

@@ -2,6 +2,19 @@
 pragma solidity ^0.8.0;
 
 interface INftTrader {
+
+    struct Listing {
+        address seller; // in the case of one lending pool, this will always be the same (CM)
+        address collection;
+        uint256 tokenId;
+        uint256 basePrice; // first bid has to be at least this amount
+        uint256 auctionStarted; // when listing was created
+        uint256 auctionEnds; // how long auction will last
+        uint256 highestBid; // highest bid if one
+        address highestBidder; // addr of the last bid
+        bool buyNow; // if auction duration has passed, then the liquidator can buy immediately at basePrice
+        address originalOwner;
+    }
     // Events
     event NFTListed(
         address indexed collection,
@@ -16,16 +29,12 @@ interface INftTrader {
         address indexed collection,
         uint256 indexed tokenId,
         uint256 price,
-        address buyer,
+        address indexed buyer,
         uint256 timestamp
     );
-    event NFTAuctionEnded(
-        address indexed collection,
-        uint256 indexed tokenId,
-        address winner,
-        uint256 finalPrice,
-        uint256 timestamp
-    );
+    event AuctionEndedWithNoWinner(address indexed collection, uint256 indexed tokenId);
+    event AuctionWon(address indexed winner, address indexed collection, uint256 tokenId, uint256 amount);
+    event NewBid(address indexed bidder, address indexed collection, uint256 tokenId, uint256 amount);
 
     // Core Functions
     function initialize(address _collateralManagerAddr, address _pool) external;
@@ -41,6 +50,8 @@ interface INftTrader {
 
     function delist(address collection, uint256 tokenId) external;
 
+    function endAllConcludedAuctions() external;
+
     function placeBid(address bidder, address collection, uint256 tokenId) external payable;
 
     function endAuction(address collection, uint256 tokenId) external;
@@ -48,18 +59,7 @@ interface INftTrader {
     function purchase(address buyer, address collection, uint256 tokenId) external payable;
 
     // Helper Functions
-    function isListed(address collection, uint256 tokenId) external view returns (bool);
+    function isListing(address collection, uint256 tokenId) external view returns (bool);
 
-    function viewListing(address collection, uint256 tokenId) external view returns (
-        address seller,
-        address collectionAddr,
-        uint256 token,
-        uint256 basePrice,
-        uint256 auctionStarted,
-        uint256 auctionEnds,
-        uint256 highestBid,
-        address highestBidder,
-        bool buyNow,
-        address originalOwner
-    );
+    function getListing(address collection, uint256 tokenId) external view returns (Listing memory);
 }

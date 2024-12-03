@@ -43,6 +43,12 @@ contract UserPortal is ReentrancyGuard, IERC721Receiver {
     receive() external payable {}
     fallback() external payable {}
 
+    function refresh() public {
+        iTrader.endAllConcludedAuctions();
+        iPool.updateBorrowersInterest();
+        iCollateralManager.updateAllLiquidatableCollateral();
+    }
+
 
 
     /////////// ** LENDER FUNCTIONS ** /////////////

@@ -37,7 +37,7 @@ contract MockOracle {
     // manually set the floor price for a collection;
     function manualUpdateFloorPrice(address collectionAddr, uint256 floorPrice) external onlyOwner {
         floorPrices[collectionAddr] = floorPrice;
-        updateAllFloorPrices();
+        // updateAllFloorPrices();
         emit UpdateCollection(collectionAddr, floorPrice);
     }
 

@@ -146,7 +146,7 @@ contract CollateralManager is IERC721Receiver {
         updateLiquidatableCollateral(borrower);
         // 3. emit event to show this NFT was liquidated!
         //TODO get actual timestamp
-        emit Liquidated(borrower, collectionAddress, tokenId, amount,1);
+        emit Liquidated(borrower, collectionAddress, tokenId, amount, 1);
     }
 
     // @Helper for liquidateNft
@@ -284,10 +284,11 @@ contract CollateralManager is IERC721Receiver {
     function addTradeListing(address borrower, address collection, uint256 tokenId) private {
         uint256 basePrice = getBasePrice(collection);
         // determine basePrice calculation.
-        uint256 duration = 1000;
+        uint256 duration = 20000; // 20000 seconds
         iNftTrader.addListing(basePrice, collection, tokenId, true, duration, borrower);
 
         //TODO emit NFTListed event
+        emit NFTListed(borrower, collection, tokenId, basePrice, block.timestamp);
     }
 
     function delistTrade(address collection, uint256 tokenId) private {

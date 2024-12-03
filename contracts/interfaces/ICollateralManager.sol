@@ -93,4 +93,6 @@ interface ICollateralManager {
         address collectionAddress
     ) external returns (uint256);
 
+    function updateAllLiquidatableCollateral() external;
+
 }
