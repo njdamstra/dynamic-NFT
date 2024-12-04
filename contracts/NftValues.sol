@@ -2,6 +2,7 @@
 pragma solidity ^0.8.18;
 
 import {IMockOracle} from "./interfaces/IMockOracle.sol";
+import {IAddresses} from "./interfaces/IAddresses.sol";
 
 contract NftValues {
     address public owner;
@@ -13,7 +14,10 @@ contract NftValues {
     bool public useOnChainOracle;
     address public onChainOracle;
     IMockOracle public iOnChainOracle;
-    address public collateralManager;
+    address public collateralManagerAddr;
+
+    address public addressesAddr;
+    IAddresses public addresses;
 
     struct NftCollection {
         address collection; // NFT contract address or is it the same as collectionAddress?
@@ -42,22 +46,23 @@ contract NftValues {
     // event NftAdded(address indexed collection, uint256 indexed tokenId);
     // event NftRemoved(address indexed collection, uint256 indexed tokenId);
 
-    constructor() { //Is the owner not always CollateralManager? -F
+    constructor(address _addressesAddr) { //Is the owner not always CollateralManager? -F
         owner = msg.sender;
+        addressesAddr = _addressesAddr;
+        addresses = IAddresses(addressesAddr);
     }
 
     // Initialize function to set the CollateralManager address
-    function initialize(address _collateralManagerAddr, bool _useOnChainOracle, address _onChainOracle) external onlyOwner {
-        require(owner == msg.sender, "Only the owner can call this function");
-        require(_collateralManagerAddr != address(0), "Invalid address");
-        collateralManager = _collateralManagerAddr;
+    function initialize(bool _useOnChainOracle) external onlyOwner {
+        onChainOracle = addresses.getAddress("MockOracle");
+        collateralManagerAddr = addresses.getAddress("CollateralManager");
         useOnChainOracle = _useOnChainOracle;
         if (useOnChainOracle) {
-            onChainOracle = _onChainOracle;
             iOnChainOracle = IMockOracle(onChainOracle);
         } else {
             onChainOracle = address(0);
         }
+        // collectionList.push(NftCollection(address(0), 0, false, false, true));
     }
 
     modifier onlyOwner() {
@@ -66,7 +71,7 @@ contract NftValues {
     }
 
     modifier onlyCollateralManager() {
-        require(msg.sender == collateralManager, "[*ERROR*] Only the Owner can call this function!");
+        require(msg.sender == collateralManagerAddr, "[*ERROR*] Only the Owner can call this function!");
         _;
     }
 
@@ -85,6 +90,11 @@ contract NftValues {
             )) {
                 return; // collection already in list
             }
+        if (collectionList.length != 0) {
+            if (collectionList[0].collection == collectionAddr) {
+                return; // collection already in list
+            }
+        }
         // Add the new collection
         collectionList.push(NftCollection(collectionAddr, 0, true, true, false));
         collectionIndex[collectionAddr] = collectionList.length - 1; // Store the index of the collection
@@ -190,6 +200,17 @@ contract NftValues {
             col.safe = safe;
             col.floorPrice = floorPrice;
             emit FloorPriceUpdated(collectionAddr, floorPrice, safe, block.timestamp);
+        }
+    }
+
+    function requestOracleUpdates() public {
+        address[] memory collectionAddr = getCollectionAddrList();
+        for (uint i = 0; i < collectionAddr.length; i++) {
+            if (useOnChainOracle) {
+                requestOnChainFloorPrice(collectionAddr[i]);
+            } else {
+                requestOffChainFloorPrice(collectionAddr[i]);
+            }
         }
     }
 

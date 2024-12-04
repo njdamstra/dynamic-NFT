@@ -37,7 +37,7 @@ interface INftTrader {
     event NewBid(address indexed bidder, address indexed collection, uint256 tokenId, uint256 amount);
 
     // Core Functions
-    function initialize(address _collateralManagerAddr, address _pool) external;
+    function initialize() external;
 
     function addListing(
         uint256 basePrice,
@@ -60,6 +60,8 @@ interface INftTrader {
 
     // Helper Functions
     function isListing(address collection, uint256 tokenId) external view returns (bool);
+
+    function listingState(address collection, uint256 tokenId) external view returns (uint);
 
     function getListing(address collection, uint256 tokenId) external view returns (Listing memory);
 }

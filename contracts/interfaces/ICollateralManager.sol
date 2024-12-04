@@ -21,6 +21,7 @@ interface ICollateralManager {
         uint256 timestamp
     );
     event NFTDeListed(
+        address indexed borrower,
         address indexed collection,
         uint256 tokenId,
         uint256 timestamp
@@ -41,12 +42,7 @@ interface ICollateralManager {
     );
 
     // Initialization
-    function initialize(
-        address _pool,
-        address _nftTrader,
-        address _nftValues,
-        address _portal
-    ) external;
+    function initialize() external;
 
     // Public/External Read Functions
     function isNftValid(
