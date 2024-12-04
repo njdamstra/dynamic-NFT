@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 import {INftValues} from "../interfaces/INftValues.sol";
+import {IAddresses} from "../interfaces/IAddresses.sol";
 
 
 contract MockOracle {
@@ -11,13 +12,18 @@ contract MockOracle {
     INftValues public iNftValues;
     address public owner;
 
+    address public addressesAddr;
+    IAddresses public addresses;
+
     event SetCollection(address indexed collectionAddr, uint256 floorPrice, bool safe);
     event UpdateCollection(address indexed collectionAddr, uint256 newFloorPrice);
     event RequestFromNftValues(address indexed collectionAddr);
     event SentUpdateToNftValues(address indexed collectionAdd, uint256 floorPrice, bool safe);
 
-    constructor() {
+    constructor(address _addressesAddr) {
         owner = msg.sender;
+        addressesAddr = _addressesAddr;
+        addresses = IAddresses(addressesAddr);
     }
 
     modifier onlyOwner() {
@@ -29,8 +35,8 @@ contract MockOracle {
         _;
     }
 
-    function initialize(address _nftValuesAddr) external onlyOwner {
-        nftValuesAddr = _nftValuesAddr;
+    function initialize() external onlyOwner {
+        nftValuesAddr = addresses.getAddress("NftValues");
         iNftValues = INftValues(nftValuesAddr);
     }
 

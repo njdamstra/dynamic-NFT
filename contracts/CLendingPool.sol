@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol"; // added for securit
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./CCollateralManager.sol";
 import {ICollateralManager} from "../contracts/interfaces/ICollateralManager.sol";
+import {IAddresses} from "./interfaces/IAddresses.sol";
 
 
 contract LendingPool is ReentrancyGuard {
@@ -39,19 +40,23 @@ contract LendingPool is ReentrancyGuard {
     address public owner;
     address public portal;
     address public trader;
+    address public addressesAddr;
+    IAddresses public addresses;
 
-    constructor() {
+    constructor(address _addressesAddr) {
         owner = msg.sender;
+        addressesAddr = _addressesAddr;
+        addresses = IAddresses(addressesAddr);
     }
 
-    function initialize(address _collateralManagerAddr, address _portal, address _trader) external onlyOwner {
-
+    function initialize() external onlyOwner {
         paused = false;
-        collateralManagerAddr = _collateralManagerAddr;
-        iCollateralManager = ICollateralManager(collateralManagerAddr);
 
-        portal = _portal;
-        trader = _trader;
+        portal = addresses.getAddress("UserPortal");
+        trader = addresses.getAddress("NftTrader");
+        collateralManagerAddr = addresses.getAddress("CollateralManager");
+
+        iCollateralManager = ICollateralManager(collateralManagerAddr);
     }
 
     modifier onlyOwner() {
@@ -80,11 +85,11 @@ contract LendingPool is ReentrancyGuard {
     event Repaid(address indexed user, uint256 amount);
     event Liquidated(address indexed borrower, address indexed collection, uint256 tokenId, uint256 amountRecovered);
 
-    function isLender(address lender) public returns (bool) {
+    function isLender(address lender) public view returns (bool) {
         return isLenderMapping[lender];
     }
 
-    function isBorrower(address borrower) public returns (bool) {
+    function isBorrower(address borrower) public view returns (bool) {
         return isBorrowerMapping[borrower];
     }
 
@@ -107,7 +112,7 @@ contract LendingPool is ReentrancyGuard {
 
         // Add the borrower to the list and store its index.
         borrowers.push(borrower);
-        borrowerIndex[borrower] = borrowers.length - 1;
+        borrowerIndex[borrower] = borrowers.length;
         isBorrowerMapping[borrower] = true;
     }
 
@@ -116,17 +121,17 @@ contract LendingPool is ReentrancyGuard {
         // require(msg.sender == address(this) || msg.sender == collateralManagerAddr, "only Pool and CM can delete borrower");
         require(borrower != address(0), "Invalid borrower address");
 
-        uint256 index = borrowerIndex[borrower];
-        if (index == 0) {
+        uint256 indexPlusOne = borrowerIndex[borrower];
+        if (indexPlusOne == 0) {
             return; // Borrower is not in the list
         }
-        index--;
+        uint256 index = indexPlusOne - 1;
         uint256 lastIndex = borrowers.length - 1;
         if (index != lastIndex) {
             // Swap the borrower to delete with the last borrower.
             address lastBorrower = borrowers[lastIndex];
             borrowers[index] = lastBorrower;
-            borrowerIndex[lastBorrower] = index; // Update index for the swapped borrower
+            borrowerIndex[lastBorrower] = index + 1; // Update index for the swapped borrower
         }
         // Clean up and remove the last entry.
         borrowers.pop();
@@ -141,31 +146,31 @@ contract LendingPool is ReentrancyGuard {
         // require(msg.sender == address(this) || msg.sender == collateralManagerAddr, "only Pool and CM can add lender to list");
         require(lender != address(0), "Invalid lender address");
 
-        if (lenderIndex[lender] != 0 || (lenders.length != 0 && lenders[lenderIndex[lender]] == lender)) {
+        if (isLenderMapping[lender]) {
             return; // Lender already exists in the list
         }
 
         // Add the lender to the list and store its index.
         lenders.push(lender);
-        lenderIndex[lender] = lenders.length - 1;
+        lenderIndex[lender] = lenders.length;
+        isLenderMapping[lender] = true;
     }
 
     function deleteLender(address lender) public {
         // require(msg.sender == address(this) || msg.sender == collateralManagerAddr, "only Pool and CM can delete lender from list");
         require(lender != address(0), "Invalid lender address");
 
-        uint256 index = lenderIndex[lender];
-        if (index == 0) {
+        uint256 indexPlusOne = lenderIndex[lender];
+        if (indexPlusOne == 0) {
             return; // Borrower is not in the list
         }
-
-        index--;
+        uint256 index = indexPlusOne - 1;
         uint256 lastIndex = lenders.length - 1;
         if (index != lastIndex) {
             // Swap the lender to delete with the last lender.
             address lastLender = lenders[lastIndex];
             lenders[index] = lastLender;
-            lenderIndex[lastLender] = index; // Update index for the swapped lender
+            lenderIndex[lastLender] = index + 1; // Update index for the swapped lender
         }
 
         // Clean up and remove the last entry.
