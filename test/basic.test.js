@@ -570,7 +570,7 @@ describe("UserPortal", function () {
             expect(collateralValue).to.equal(gNftFP);
 
             console.log("Borrower1's loans Health Factor:", hf.toString());
-            expect(hf).to.equal(181);
+            expect(hf).to.equal(136);
 
             const liqAfter = await collateralManager.getBeingLiquidated(borrower1Addr);
             console.log("borrower1 is liquidatable: ", liqAfter.toString());

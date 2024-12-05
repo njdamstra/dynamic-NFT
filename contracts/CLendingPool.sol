@@ -256,7 +256,7 @@ contract LendingPool is ReentrancyGuard {
         uint256 collateralValue = iCollateralManager.getCollateralValue(borrower);
         uint256 newHealthFactor = calculateHealthFactor(newTotalDebt, collateralValue);
 
-        require(newHealthFactor > 150, "[*ERROR*] New health factor too low to borrow more money!");
+        require(newHealthFactor > 100, "[*ERROR*] New health factor too low to borrow more money!");
 
         poolBalance -= amount;
 
@@ -285,7 +285,7 @@ contract LendingPool is ReentrancyGuard {
     function calculateHealthFactor(uint256 debtValue, uint256 collateralValue) pure private returns (uint256) {
         if (debtValue == 0) return type(uint256).max; // Infinite health factor if no debt
         require(collateralValue <= type(uint256).max / 100, "[*ERROR*] Collateral value too high!");
-        return (collateralValue * 100) / debtValue;
+        return (collateralValue * 75) / debtValue;
     }
 
     // Allows users to repay borrowed ETH with interest
