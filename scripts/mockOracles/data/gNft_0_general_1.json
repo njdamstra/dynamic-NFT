@@ -1,0 +1,323 @@
+{
+    "nft_id": "ethereum.0xed5af388653567af2f388e6224dc7c4b3241c544.4666",
+    "chain": "ethereum",
+    "contract_address": "0xED5AF388653567Af2F388E6224dC7C4b3241C544",
+    "token_id": "0",
+    "name": "GoodNft #0",
+    "description": null,
+    "previews": {
+      "image_small_url": "https://lh3.googleusercontent.com/1BEATYIWoROMf5YeOqtYsYVrO1WpZFY6yTyePMvZODa07-vzcWL8_Jv7HQCNOU1sSFiDApblylkiy8vuhdaSVzRWRZSDt2wyr5ev=s250",
+      "image_medium_url": "https://lh3.googleusercontent.com/1BEATYIWoROMf5YeOqtYsYVrO1WpZFY6yTyePMvZODa07-vzcWL8_Jv7HQCNOU1sSFiDApblylkiy8vuhdaSVzRWRZSDt2wyr5ev",
+      "image_large_url": "https://lh3.googleusercontent.com/1BEATYIWoROMf5YeOqtYsYVrO1WpZFY6yTyePMvZODa07-vzcWL8_Jv7HQCNOU1sSFiDApblylkiy8vuhdaSVzRWRZSDt2wyr5ev=s1000",
+      "image_opengraph_url": "https://lh3.googleusercontent.com/1BEATYIWoROMf5YeOqtYsYVrO1WpZFY6yTyePMvZODa07-vzcWL8_Jv7HQCNOU1sSFiDApblylkiy8vuhdaSVzRWRZSDt2wyr5ev=k-w1200-s2400-rj",
+      "blurhash": "UPHU%.0m4o-i%gD*%2ROM_r;XUo#DiWCXAxt",
+      "predominant_color": "#595772"
+    },
+    "image_url": "https://cdn.simplehash.com/assets/ec2e4a0aefb1588d122c369a994b8ce67c701b9226cb078544a89c237a41cba9.png",
+    "image_properties": {
+      "width": 2000,
+      "height": 2000,
+      "size": 2054653,
+      "mime_type": "image/png",
+      "exif_orientation": null
+    },
+    "video_url": null,
+    "video_properties": null,
+    "audio_url": null,
+    "audio_properties": null,
+    "model_url": null,
+    "model_properties": null,
+    "other_url": null,
+    "other_properties": null,
+    "background_color": null,
+    "external_url": null,
+    "created_date": "2022-01-12T18:01:36",
+    "status": "minted",
+    "token_count": 1,
+    "owner_count": 1,
+    "owners": [
+      {
+        "owner_address": "0x66666F58dE1bcD762A5E5c5aFf9cc3C906D66666",
+        "quantity": 1,
+        "quantity_string": "1",
+        "first_acquired_date": "2023-06-30T09:28:59",
+        "last_acquired_date": "2024-01-13T10:15:35"
+      }
+    ],
+    "contract": {
+      "type": "ERC721",
+      "name": "Azuki",
+      "symbol": "AZUKI",
+      "deployed_by": "0xd45058Bf25BBD8F586124C479D384c8C708CE23A",
+      "deployed_via_contract": null,
+      "owned_by": "0x2aE6B0630EBb4D155C6e04fCB16840FFA77760AA",
+      "has_multiple_collections": false
+    },
+    "collection": {
+      "collection_id": "2ccfd6cb165074e4881906dcc701f1d8",
+      "name": "Azuki",
+      "description": "Take the red bean to join the garden. View the collection at [azuki.com/gallery](https://azuki.com/gallery).\r\n\r\nAzuki starts with a collection of 10,000 avatars that give you membership access to The Garden: a corner of the internet where artists, builders, and web3 enthusiasts meet to create a decentralized future. Azuki holders receive access to exclusive drops, experiences, and more. Visit [azuki.com](https://azuki.com) for more details.\r\n\r\nWe rise together. We build together. We grow together.",
+      "image_url": "https://lh3.googleusercontent.com/HTfDnsQfaqpkdPB0OITH5RSoAHKTUDYsB03S2jaClYMbnhhoTIB7u4Ln8QU01OvkJky1Tm1s6DsQtZMDqZcZ-zpy9lizOahrHA",
+      "image_properties": {
+        "width": 400,
+        "height": 400,
+        "mime_type": "image/png"
+      },
+      "banner_image_url": "https://lh3.googleusercontent.com/T6RO9ju0sUpITy_j5lfuASyPMbaWqr_r7bowI1ZNqAnBYYUHL7doNCF4pBdsn449yBLVIkACtjf_aBWeGaIKhNyfpdP2Slz0RQ=w2500",
+      "category": "pfps",
+      "is_nsfw": false,
+      "external_url": "http://www.azuki.com",
+      "twitter_username": "Azuki",
+      "discord_url": "https://discord.gg/azuki",
+      "instagram_username": null,
+      "medium_username": null,
+      "telegram_url": null,
+      "marketplace_pages": [
+        {
+          "marketplace_id": "magiceden",
+          "marketplace_name": "Magic Eden",
+          "marketplace_collection_id": "ethereum/0xed5af388653567af2f388e6224dc7c4b3241c544",
+          "nft_url": "https://magiceden.io/item-details/ethereum/0xed5af388653567af2f388e6224dc7c4b3241c544/4666",
+          "collection_url": "https://magiceden.io/collections/ethereum/0xed5af388653567af2f388e6224dc7c4b3241c544",
+          "verified": null
+        },
+        {
+          "marketplace_id": "opensea",
+          "marketplace_name": "OpenSea",
+          "marketplace_collection_id": "azuki",
+          "nft_url": "https://opensea.io/assets/ethereum/0xed5af388653567af2f388e6224dc7c4b3241c544/4666",
+          "collection_url": "https://opensea.io/collection/azuki",
+          "verified": true
+        }
+      ],
+      "metaplex_mint": null,
+      "metaplex_candy_machine": null,
+      "metaplex_first_verified_creator": null,
+      "mpl_core_collection_address": null,
+      "floor_prices": [
+        {
+          "marketplace_id": "magiceden",
+          "marketplace_name": "Magic Eden",
+          "value": 5790000000000000000,
+          "payment_token": {
+            "payment_token_id": "ethereum.native",
+            "name": "Ether",
+            "symbol": "ETH",
+            "address": null,
+            "decimals": 18
+          },
+          "value_usd_cents": 2202539
+        },
+        {
+          "marketplace_id": "blur",
+          "marketplace_name": "Blur",
+          "value": 5825000000000000000,
+          "payment_token": {
+            "payment_token_id": "ethereum.native",
+            "name": "Ether",
+            "symbol": "ETH",
+            "address": null,
+            "decimals": 18
+          },
+          "value_usd_cents": 2215853
+        },
+        {
+          "marketplace_id": "opensea",
+          "marketplace_name": "OpenSea",
+          "value": 5849900000000000000,
+          "payment_token": {
+            "payment_token_id": "ethereum.native",
+            "name": "Ether",
+            "symbol": "ETH",
+            "address": null,
+            "decimals": 18
+          },
+          "value_usd_cents": 2225325
+        },
+        {
+          "marketplace_id": "looksrare",
+          "marketplace_name": "LooksRare",
+          "value": 10000000000000000000,
+          "payment_token": {
+            "payment_token_id": "ethereum.native",
+            "name": "Ether",
+            "symbol": "ETH",
+            "address": null,
+            "decimals": 18
+          },
+          "value_usd_cents": 3804040
+        }
+      ],
+      "top_bids": [
+        {
+          "marketplace_id": "blur",
+          "marketplace_name": "Blur",
+          "value": 5740000000000000000,
+          "payment_token": {
+            "payment_token_id": "ethereum.native",
+            "name": "Ether",
+            "symbol": "ETH",
+            "address": null,
+            "decimals": 18
+          },
+          "value_usd_cents": 2183519
+        },
+        {
+          "marketplace_id": "opensea",
+          "marketplace_name": "OpenSea",
+          "value": 5716600000000000000,
+          "payment_token": {
+            "payment_token_id": "ethereum.native",
+            "name": "Ether",
+            "symbol": "ETH",
+            "address": null,
+            "decimals": 18
+          },
+          "value_usd_cents": 2174618
+        }
+      ],
+      "distinct_owner_count": 3989,
+      "distinct_nft_count": 10000,
+      "total_quantity": 10000,
+      "chains": [
+        "ethereum"
+      ],
+      "top_contracts": [
+        "ethereum.0xed5af388653567af2f388e6224dc7c4b3241c544"
+      ],
+      "collection_royalties": [
+        {
+          "source": "opensea",
+          "total_creator_fee_basis_points": 500,
+          "recipients": [
+            {
+              "address": "0xB4D24DAcbdFfA1BBf9A624044484b3FEeB7fdF74",
+              "percentage": 100,
+              "basis_points": 500
+            }
+          ]
+        }
+      ]
+    },
+    "last_sale": {
+      "from_address": "0x8BFaD4b4575D672362a6e4785a7b019EbBaA1bE6",
+      "to_address": "0x66666F58dE1bcD762A5E5c5aFf9cc3C906D66666",
+      "quantity": 1,
+      "quantity_string": "1",
+      "timestamp": "2023-06-30T09:28:59",
+      "transaction": "0x47e70378d740c9c4696c92d9c1215740622cc49526bf90f6582996a1117df826",
+      "marketplace_id": "x2y2",
+      "marketplace_name": "X2Y2",
+      "is_bundle_sale": false,
+      "payment_token": {
+        "payment_token_id": "ethereum.native",
+        "name": "Ether",
+        "symbol": "ETH",
+        "address": null,
+        "decimals": 18
+      },
+      "unit_price": 235000000000000000000,
+      "total_price": 235000000000000000000,
+      "unit_price_usd_cents": 44455655
+    },
+    "primary_sale": {
+      "from_address": null,
+      "to_address": "0x45a114939cD0aeA65c3aC5Ae46182E887c6EF4b4",
+      "quantity": 1,
+      "quantity_string": "1",
+      "timestamp": "2022-01-12T18:01:36",
+      "transaction": "0x7079e502f950ad144f0261a3cfdeb6d3480e2dee391aa30eaa4af78bcd374de2",
+      "marketplace_id": "primary_sale",
+      "marketplace_name": "Primary Sale",
+      "is_bundle_sale": false,
+      "payment_token": {
+        "payment_token_id": "ethereum.native",
+        "name": "Ether",
+        "symbol": "ETH",
+        "address": null,
+        "decimals": 18
+      },
+      "unit_price": 1000000000000000000,
+      "total_price": 1000000000000000000,
+      "unit_price_usd_cents": 326188
+    },
+    "first_created": {
+      "minted_to": "0x45a114939cD0aeA65c3aC5Ae46182E887c6EF4b4",
+      "quantity": 1,
+      "quantity_string": "1",
+      "timestamp": "2022-01-12T18:01:36",
+      "block_number": 13992210,
+      "transaction": "0x7079e502f950ad144f0261a3cfdeb6d3480e2dee391aa30eaa4af78bcd374de2",
+      "transaction_initiator": "0x45a114939cD0aeA65c3aC5Ae46182E887c6EF4b4"
+    },
+    "rarity": {
+      "rank": 44,
+      "score": 1.606,
+      "unique_attributes": 0
+    },
+    "royalty": [
+      {
+        "source": "opensea",
+        "total_creator_fee_basis_points": 500,
+        "recipients": [
+          {
+            "address": "0xB4D24DAcbdFfA1BBf9A624044484b3FEeB7fdF74",
+            "percentage": 100,
+            "basis_points": 500
+          }
+        ]
+      }
+    ],
+    "extra_metadata": {
+      "attributes": [
+        {
+          "trait_type": "Type",
+          "value": "Spirit",
+          "display_type": null
+        },
+        {
+          "trait_type": "Hair",
+          "value": "Spirit Ponytail",
+          "display_type": null
+        },
+        {
+          "trait_type": "Special",
+          "value": "Fireflies",
+          "display_type": null
+        },
+        {
+          "trait_type": "Neck",
+          "value": "Golden Headphones",
+          "display_type": null
+        },
+        {
+          "trait_type": "Clothing",
+          "value": "White Qipao with Fur",
+          "display_type": null
+        },
+        {
+          "trait_type": "Eyes",
+          "value": "Striking",
+          "display_type": null
+        },
+        {
+          "trait_type": "Mouth",
+          "value": "Grin",
+          "display_type": null
+        },
+        {
+          "trait_type": "Offhand",
+          "value": "Golden Umbrella",
+          "display_type": null
+        },
+        {
+          "trait_type": "Background",
+          "value": "Dark Purple",
+          "display_type": null
+        }
+      ],
+      "image_original_url": "ipfs://QmYDvPAXtiJg7s8JdRBSLWdgSphQdac8j1YuQNNxcGE1hg/4666.png",
+      "animation_original_url": null,
+      "metadata_original_url": "ipfs://QmZcH4YvBVVRJtdn4RdbaqgspFU8gH6P9vomDpBVpAL3u4/4666"
+    }
+  }
