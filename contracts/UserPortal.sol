@@ -60,7 +60,7 @@ contract UserPortal is ReentrancyGuard, IERC721Receiver {
 
     // refreshes all contracts so that there state is fully updated.
     function refresh() public {
-        iNftValues.requestOracleUpdates();
+        iNftValues.requestNftOracleUpdates();
         iCollateralManager.updateAllLiquidatableCollateral();
         iPool.updateBorrowersInterest();
         iTrader.endAllConcludedAuctions();

@@ -201,7 +201,7 @@ contract CollateralManager is IERC721Receiver {
         collateralProfile.nftList.push(nft);
         // collateralProfile.nftListLength++;
 
-        registerNft(collectionAddress); // sends to NftValues to add to list of NFTs it keeps track of
+        registerNft(collectionAddress, tokenId); // sends to NftValues to add to list of NFTs it keeps track of
         nftContract.approve(nftTraderAddress, tokenId); // Approves NftTrader to transfer NFT on CM's behalf -N
         //TODO emit value
         // isBeingLiquidated[collectionAddress][tokenId] = false;
@@ -260,8 +260,8 @@ contract CollateralManager is IERC721Receiver {
     }
 
     //TODO NATE get the actual value from oracle nftvalue
-    function getNftValue(address collectionAddress) public view returns (uint256) {
-        return iNftValues.getFloorPrice(collectionAddress);
+    function getNftValue(address collectionAddress, uint256 tokenId) public view returns (uint256) {
+        return iNftValues.getNftPrice(collectionAddress, tokenId);
     }
 
 
@@ -274,7 +274,8 @@ contract CollateralManager is IERC721Receiver {
         uint256 result = 0;
         for (uint i = 0; i < nftList.length; i++) {
             address collectionAddress = nftList[i].collectionAddress;
-            result += getNftValue(collectionAddress); // Accumulate the value of each NFT
+            uint256 tokenId = nftList[i].tokenId;
+            result += getNftValue(collectionAddress, tokenId); // Accumulate the value of each NFT
         }
         return result;
     }
@@ -285,7 +286,7 @@ contract CollateralManager is IERC721Receiver {
     }
 
     function addTradeListing(address borrower, address collection, uint256 tokenId) private {
-        uint256 basePrice = getBasePrice(collection);
+        uint256 basePrice = getBasePrice(collection, tokenId);
         // determine basePrice calculation.
         uint256 duration = 20000; // 20000 seconds
         iNftTrader.addListing(basePrice, collection, tokenId, true, duration, borrower);
@@ -316,12 +317,12 @@ contract CollateralManager is IERC721Receiver {
         // }
     }
 
-    function getBasePrice(address collection) public view returns (uint256) {
-        uint256 floorprice = getNftValue(collection);
-        return (floorprice * 95) / 100;
+    function getBasePrice(address collection, uint256 tokenId) public view returns (uint256) {
+        uint256 price = getNftValue(collection, tokenId);
+        return (price * 95) / 100;
     }
-    function registerNft(address collection) private {
-        iNftValues.addCollection(collection);
+    function registerNft(address collection, uint256 tokenId) private {
+        iNftValues.addNft(collection, tokenId);
     }
     // for testing
     function getCollateralProfile(address borrower) external view returns (CollateralProfile memory) {
@@ -417,7 +418,7 @@ contract CollateralManager is IERC721Receiver {
         for (uint256 i = 0; i < nftCount; i++) {
             Nft memory nft = sortedNfts[i];
             // uint256 nftValue = getNftValue(nft.collectionAddress);
-            uint256 nftSoldPrice = getBasePrice(nft.collectionAddress);
+            uint256 nftSoldPrice = getBasePrice(nft.collectionAddress, nft.tokenId);
             // Simulate liquidation
             updatedCollateralValue -= nftSoldPrice; // instead of -= nftValue;
             // **** TODO: what is liquidationDiscount
@@ -458,8 +459,8 @@ contract CollateralManager is IERC721Receiver {
         uint256 n = sortedNfts.length;
         for (uint256 i = 0; i < n; i++) {
             for (uint256 j = i + 1; j < n; j++) {
-                uint256 valueI = getNftValue(sortedNfts[i].collectionAddress);
-                uint256 valueJ = getNftValue(sortedNfts[j].collectionAddress);
+                uint256 valueI = getNftValue(sortedNfts[i].collectionAddress, sortedNfts[i].tokenId);
+                uint256 valueJ = getNftValue(sortedNfts[j].collectionAddress, sortedNfts[j].tokenId);
                 if (valueI < valueJ) {
                     // Swap
                     Nft memory temp = sortedNfts[i];
