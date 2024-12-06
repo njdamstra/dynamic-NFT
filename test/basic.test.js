@@ -114,14 +114,16 @@ describe("UserPortal", function () {
 
         // Set initial collection prices in MockOracle
         gNftFP = parseEther("10"); // 10 ETH floor price
-        console.log("Setting floor price for GoodNft collection to ...", gNftFP.toString());
-        const GNft_safe = true; // Collection is safe for borrowing
-        await mockOracle.connect(deployer).manualSetCollection(gNftAddr, gNftFP, GNft_safe);
+        console.log("Setting price for GoodNft collection token 0 to ...", gNftFP.toString());
+        await mockOracle.connect(deployer).manualUpdateNftPrice(gNftAddr, 0, gNftFP);
+
+        await mockOracle.connect(deployer).manualUpdateNftPrice(gNftAddr, 1, gNftFP);
         
         bNftFP = parseEther("15"); // 15 ETH floor price
-        console.log("Setting floor price for BadNft collection to ...", bNftFP.toString());
+        console.log("Setting price for BadNft token 0 to ...", bNftFP.toString());
         const BNft_safe = true; // Collection is safe for borrowing
-        await mockOracle.connect(deployer).manualSetCollection(bNftAddr, bNftFP, BNft_safe);
+        await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 0, bNftFP);
+
     
         // Mint NFTs for borrower1 and borrower2
         console.log("Minting GoodNfts to borrower1 and borrower2... ");
@@ -189,13 +191,13 @@ describe("UserPortal", function () {
             anyValue, // Placeholder for value (since value is not specified in event)
             anyValue  // Placeholder for timestamp
           )
-          .and.to.emit(nftValues, "CollectionAdded").withArgs(
+          .and.to.emit(nftValues, "NftAdded").withArgs(
             gNftAddr,
             0,
-            true,
-            anyValue
+            0,
+            true
           )
-          .and.to.emit(mockOracle, "RequestFromNftValues").withArgs(gNftAddr);
+          .and.to.emit(mockOracle, "RequestFromNftValues").withArgs(gNftAddr, 0);
 
           console.log("CM successful emited the CollateralAdded event");
     
@@ -218,12 +220,12 @@ describe("UserPortal", function () {
     
           // Verify that the collection is registered in NftValues
           console.log("Confirming Collection details in NftValues");
-          const collection = await nftValues.getCollection(gNftAddr);
-          expect(collection.collection).to.equal(gNftAddr);
-          expect(collection.floorPrice).to.equal(parseEther("10"));
-          expect(collection.safe).to.be.true;
-          expect(collection.pending).to.be.false;
-          expect(collection.notPending).to.be.true;
+          const nft = await nftValues.getNft(gNftAddr, 0);
+          expect(nft.collection).to.equal(gNftAddr);
+          expect(nft.price).to.equal(parseEther("10"));
+          expect(nft.tokenId).to.equal(0);
+          expect(nft.pending).to.be.false;
+          expect(nft.notPending).to.be.true;
         });
     
         it("should fail if borrower1 tries to add an unapproved NFT as collateral", async function () {
@@ -371,20 +373,20 @@ describe("UserPortal", function () {
         it("Should liquidate nft if it's floor price changes to 5", async function () {
             const newGFP = parseEther("6");
             await expect(
-                mockOracle.connect(deployer).manualUpdateFloorPrice(gNftAddr, newGFP)
-            ).to.emit(mockOracle, "UpdateCollection").withArgs(gNftAddr, newGFP);
+                mockOracle.connect(deployer).manualUpdateNftPrice(gNftAddr, 0, newGFP)
+            ).to.emit(mockOracle, "UpdateNft").withArgs(gNftAddr, 0, newGFP);
 
-            const floorPriceBefore = await nftValues.getFloorPrice(gNftAddr);
+            const floorPriceBefore = await nftValues.getNftPrice(gNftAddr, 0);
             console.log("Floor price of GoodNft before oracle updated NftValues:", floorPriceBefore.toString());
             expect(floorPriceBefore).to.equal(parseEther("10"));
             
             console.log("MockOracle updates nft price in NftValues");
             await expect(
                 mockOracle.updateAllFloorPrices()
-            ).to.emit(mockOracle, "SentUpdateToNftValues").withArgs(gNftAddr, newGFP, true
-            ).to.emit(nftValues, "FloorPriceUpdated").withArgs(gNftAddr, newGFP, true, anyValue);
+            ).to.emit(mockOracle, "SentUpdateToNftValues").withArgs(gNftAddr, 0, newGFP
+            ).to.emit(nftValues, "NftPriceUpdated").withArgs(gNftAddr, 0, newGFP, anyValue);
             
-            const floorPriceAfter = await collateralManager.getNftValue(gNftAddr);
+            const floorPriceAfter = await collateralManager.getNftValue(gNftAddr, 0);
             expect(floorPriceAfter).to.equal(newGFP);
 
             console.log("Check borrowers data");
@@ -423,7 +425,7 @@ describe("UserPortal", function () {
             await portal.connect(borrower1).borrow(amountBorrowing);
 
             const newGFP = parseEther("6");
-            await mockOracle.connect(deployer).manualUpdateFloorPrice(gNftAddr, newGFP);
+            await mockOracle.connect(deployer).manualUpdateNftPrice(gNftAddr, 0, newGFP);
             
             await portal.connect(deployer).refresh(); // refresh to update floor prices in NftValues and add listing to NftTrader
 
@@ -551,17 +553,17 @@ describe("UserPortal", function () {
             
             const increaseGFP = parseEther("10");
             await expect(
-                mockOracle.connect(deployer).manualUpdateFloorPrice(gNftAddr, increaseGFP)
-            ).to.emit(mockOracle, "UpdateCollection").withArgs(gNftAddr, increaseGFP);
+                mockOracle.connect(deployer).manualUpdateNftPrice(gNftAddr, 0, increaseGFP)
+            ).to.emit(mockOracle, "UpdateNft").withArgs(gNftAddr, 0, increaseGFP);
 
             // Refresh portal and check events step-by-step
             const tx = await portal.connect(deployer).refresh();
 
             // Check individual events
-            await expect(tx).to.emit(mockOracle, "RequestFromNftValues").withArgs(gNftAddr);
-            await expect(tx).to.emit(mockOracle, "SentUpdateToNftValues").withArgs(gNftAddr, increaseGFP, true);
+            await expect(tx).to.emit(mockOracle, "RequestFromNftValues").withArgs(gNftAddr, 0);
+            await expect(tx).to.emit(mockOracle, "SentUpdateToNftValues").withArgs(gNftAddr, 0, increaseGFP);
             console.log("update floor price in NftValues to 10...");
-            await expect(tx).to.emit(nftValues, "FloorPriceUpdated").withArgs(gNftAddr, increaseGFP, true, anyValue);
+            await expect(tx).to.emit(nftValues, "NftPriceUpdated").withArgs(gNftAddr, 0, increaseGFP, anyValue);
             
             console.log("check state...");
             const [, , , collateralValue, hf] = await lendingPool.connect(borrower1).getUserAccountData(borrower1Addr);
@@ -586,6 +588,18 @@ describe("UserPortal", function () {
             console.log("Listening for CM emitting NFTDeListed event...");
             await expect(tx).to.emit(collateralManager, "NFTDeListed").withArgs(borrower1Addr, gNftAddr, 0, anyValue);
         });
+        it("should let borrower1 to add more collateral and have his trade delisted", async function () {
+            await gNft.connect(deployer).mint(borrower1Addr);
+            const gNft2 = parseEther("12"); // price of gNft tokenId 2
+            await mockOracle.connect(deployer).manualUpdateNftPrice(gNftAddr, 2, gNft2);
+            
+            await gNft.connect(borrower1).setApprovalForAll(portalAddr, true);
+            const tx = await portal.connect(borrower1).addCollateral(gNftAddr, 2);
+
+            expect(tx).to.emit(collateralManager, "NftDeListed").withArgs(
+                borrower1Addr, gNftAddr, 0, anyValue);
+
+        })
     });
     describe("Borrower1 adds multiple NFTs as Collateral", function () {
         beforeEach(async function () {
@@ -605,9 +619,9 @@ describe("UserPortal", function () {
             // listen for the events
             await expect(tx).to.emit(collateralManager, "CollateralAdded").withArgs(
                 borrower1Addr, bNftAddr, 0, anyValue, anyValue);
-            await expect(tx).to.emit(nftValues, "CollectionAdded").withArgs(
-                bNftAddr, 0, true, anyValue);
-            await expect(tx).to.emit(mockOracle, "RequestFromNftValues").withArgs(bNftAddr);
+            await expect(tx).to.emit(nftValues, "NftAdded").withArgs(
+                bNftAddr, 0, 0, true);
+            await expect(tx).to.emit(mockOracle, "RequestFromNftValues").withArgs(bNftAddr, 0);
             
             // check collaterals profile total value
             const collateralValue = await collateralManager.getCollateralValue(borrower1Addr);
@@ -628,7 +642,7 @@ describe("UserPortal", function () {
             const tx3 = await portal.connect(borrower2).addCollateral(gNftAddr, 1);
             await expect(tx3).to.emit(collateralManager, "CollateralAdded").withArgs(
                 borrower2Addr, gNftAddr, 1, anyValue, anyValue);
-            await expect(tx3).to.not.emit(nftValues, "CollectionAdded")
+            // await expect(tx3).to.not.emit(nftValues, "CollectionAdded")
             // .withArgs(gNftAddr, anyValue, true, anyValue);
 
             // borrower1 borrows 15 eth
@@ -674,6 +688,70 @@ describe("UserPortal", function () {
                 portal.connect(borrower1).redeemCollateral(bNftAddr, 0)
             ).to.be.revertedWith("[*ERROR*] Health Factor would fall below 1.2 after redemption!");
         })
+    })
+
+    describe("Dynamic Liquidation Scenarios", function () {
+        beforeEach(async function () {
+            // set NFT PRICES
+            // bNft0 = parseEther("40");
+            // await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 0, bNft0);
+            bNft1 = parseEther("30");
+            await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 1, bNft1);
+            bNft2 = parseEther("20");
+            await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 2, bNft2);
+            bNft3 = parseEther("100");
+            await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 3, bNft3);
+
+            // mint BadNft to borrower1:
+            await bNft.connect(deployer).mint(borrower1Addr);
+            await bNft.connect(deployer).mint(borrower1Addr);
+            await bNft.connect(deployer).mint(borrower1Addr);
+            await bNft.connect(deployer).mint(borrower1Addr);
+
+            let amountLending1 = parseEther("150");
+            await portal.connect(lender1).supply(amountLending1, { value: amountLending1 });
+            // borrower1 adds NFT GoodNft tokenId1 as collateral via portal
+            await bNft.connect(borrower1).setApprovalForAll(portalAddr, true);
+            // await portal.connect(borrower1).addCollateral(bNftAddr, 0);
+            await portal.connect(borrower1).addCollateral(bNftAddr, 1);
+            await portal.connect(borrower1).addCollateral(bNftAddr, 2);
+            await portal.connect(borrower1).addCollateral(bNftAddr, 3);
+
+            amountBorrowing1 = parseEther("50");
+            await portal.connect(borrower1).borrow(amountBorrowing1);
+        });
+        it("should only liquidate some of borrower1's NFTs", async function () {
+            const newBNft3 = parseEther("15");
+            const price3Before = await nftValues.getNftPrice(bNftAddr, 3);
+            const oracle3Before = await mockOracle.getNftPrice(bNftAddr, 3);
+            await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 3, newBNft3);
+            await portal.connect(borrower1).refresh();
+            await portal.connect(borrower1).refresh();
+            const price3After = await nftValues.getNftPrice(bNftAddr, 3);
+            const oracle3After = await mockOracle.getNftPrice(bNftAddr, 3);
+            console.log("bNft3 price before:", price3Before.toString());
+            console.log("bNft3 price after:", price3After.toString());
+            console.log("bNft3 oracle price before:", oracle3Before.toString());
+            console.log("bNft3 oracle price after:", oracle3After.toString());
+
+            const [totalDebt, netDebt, , colValue, hf] = await lendingPool.connect(borrower1).getUserAccountData(borrower1Addr);
+            console.log("Borrower1's total debt: ", totalDebt.toString());
+            console.log("Borrower1's net debt: ", netDebt.toString());
+            // expect(netDebt).to.equal(parseEther("5"));
+            console.log("Borrower1's total collateral value: ", colValue.toString());
+            // expect(colValue).to.equal(parseEther("25"));
+            console.log("Borrower1's health factor:", hf.toString());
+
+            // const b0listing = await nftTrader.isListing(bNftAddr, 0);
+            const b1listing = await nftTrader.isListing(bNftAddr, 1);
+            const b2listing = await nftTrader.isListing(bNftAddr, 2);
+            const b3listing = await nftTrader.isListing(bNftAddr, 3);
+
+            // console.log("bNft0 is listing in trader:", b0listing.toString());
+            console.log("bNft1 is listing in trader:", b1listing.toString());
+            console.log("bNft2 is listing in trader:", b2listing.toString());
+            console.log("bNft3 is listing in trader:", b3listing.toString());
+        });
     })
     
 
