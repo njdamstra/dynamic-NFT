@@ -37,6 +37,7 @@ contract NftValues {
     }
     Nft[] public nftList; // array of NFTs (Nft struct) being used as collateral
     mapping(address => mapping(uint256 => uint256)) public nftIndex; // finds index of where the nft is stored in nftList
+    mapping(address => mapping(uint256 => bool)) public nftIsMapping;
 
     // event DataRequest(address indexed collectionAddr, uint256 indexed tokenId);
     event RequestFloorPrice(address indexed collectionAddr);
@@ -102,7 +103,7 @@ contract NftValues {
                 return; // collection already in list
             }
         if (nftList.length != 0) {
-            if (nftList[0].collection == collectionAddr) {
+            if (nftList[0].collection == collectionAddr && nftList[0].tokenId == tokenId) {
                 return; // collection already in list
             }
         }

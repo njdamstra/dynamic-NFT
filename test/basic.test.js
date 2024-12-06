@@ -588,6 +588,18 @@ describe("UserPortal", function () {
             console.log("Listening for CM emitting NFTDeListed event...");
             await expect(tx).to.emit(collateralManager, "NFTDeListed").withArgs(borrower1Addr, gNftAddr, 0, anyValue);
         });
+        it("should let borrower1 to add more collateral and have his trade delisted", async function () {
+            await gNft.connect(deployer).mint(borrower1Addr);
+            const gNft2 = parseEther("12"); // price of gNft tokenId 2
+            await mockOracle.connect(deployer).manualUpdateNftPrice(gNftAddr, 2, gNft2);
+            
+            await gNft.connect(borrower1).setApprovalForAll(portalAddr, true);
+            const tx = await portal.connect(borrower1).addCollateral(gNftAddr, 2);
+
+            expect(tx).to.emit(collateralManager, "NftDeListed").withArgs(
+                borrower1Addr, gNftAddr, 0, anyValue);
+
+        })
     });
     describe("Borrower1 adds multiple NFTs as Collateral", function () {
         beforeEach(async function () {
@@ -676,6 +688,70 @@ describe("UserPortal", function () {
                 portal.connect(borrower1).redeemCollateral(bNftAddr, 0)
             ).to.be.revertedWith("[*ERROR*] Health Factor would fall below 1.2 after redemption!");
         })
+    })
+
+    describe("Dynamic Liquidation Scenarios", function () {
+        beforeEach(async function () {
+            // set NFT PRICES
+            // bNft0 = parseEther("40");
+            // await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 0, bNft0);
+            bNft1 = parseEther("30");
+            await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 1, bNft1);
+            bNft2 = parseEther("20");
+            await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 2, bNft2);
+            bNft3 = parseEther("100");
+            await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 3, bNft3);
+
+            // mint BadNft to borrower1:
+            await bNft.connect(deployer).mint(borrower1Addr);
+            await bNft.connect(deployer).mint(borrower1Addr);
+            await bNft.connect(deployer).mint(borrower1Addr);
+            await bNft.connect(deployer).mint(borrower1Addr);
+
+            let amountLending1 = parseEther("150");
+            await portal.connect(lender1).supply(amountLending1, { value: amountLending1 });
+            // borrower1 adds NFT GoodNft tokenId1 as collateral via portal
+            await bNft.connect(borrower1).setApprovalForAll(portalAddr, true);
+            // await portal.connect(borrower1).addCollateral(bNftAddr, 0);
+            await portal.connect(borrower1).addCollateral(bNftAddr, 1);
+            await portal.connect(borrower1).addCollateral(bNftAddr, 2);
+            await portal.connect(borrower1).addCollateral(bNftAddr, 3);
+
+            amountBorrowing1 = parseEther("50");
+            await portal.connect(borrower1).borrow(amountBorrowing1);
+        });
+        it("should only liquidate some of borrower1's NFTs", async function () {
+            const newBNft3 = parseEther("15");
+            const price3Before = await nftValues.getNftPrice(bNftAddr, 3);
+            const oracle3Before = await mockOracle.getNftPrice(bNftAddr, 3);
+            await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 3, newBNft3);
+            await portal.connect(borrower1).refresh();
+            await portal.connect(borrower1).refresh();
+            const price3After = await nftValues.getNftPrice(bNftAddr, 3);
+            const oracle3After = await mockOracle.getNftPrice(bNftAddr, 3);
+            console.log("bNft3 price before:", price3Before.toString());
+            console.log("bNft3 price after:", price3After.toString());
+            console.log("bNft3 oracle price before:", oracle3Before.toString());
+            console.log("bNft3 oracle price after:", oracle3After.toString());
+
+            const [totalDebt, netDebt, , colValue, hf] = await lendingPool.connect(borrower1).getUserAccountData(borrower1Addr);
+            console.log("Borrower1's total debt: ", totalDebt.toString());
+            console.log("Borrower1's net debt: ", netDebt.toString());
+            // expect(netDebt).to.equal(parseEther("5"));
+            console.log("Borrower1's total collateral value: ", colValue.toString());
+            // expect(colValue).to.equal(parseEther("25"));
+            console.log("Borrower1's health factor:", hf.toString());
+
+            // const b0listing = await nftTrader.isListing(bNftAddr, 0);
+            const b1listing = await nftTrader.isListing(bNftAddr, 1);
+            const b2listing = await nftTrader.isListing(bNftAddr, 2);
+            const b3listing = await nftTrader.isListing(bNftAddr, 3);
+
+            // console.log("bNft0 is listing in trader:", b0listing.toString());
+            console.log("bNft1 is listing in trader:", b1listing.toString());
+            console.log("bNft2 is listing in trader:", b2listing.toString());
+            console.log("bNft3 is listing in trader:", b3listing.toString());
+        });
     })
     
 

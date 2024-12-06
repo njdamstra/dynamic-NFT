@@ -21,7 +21,7 @@ def getNftPrice(collection, token_id, iteration):
     avg_sales_price = getNftSalesPrice(sales_data)
 
     # Combine prices to determine fair price
-    prices = [price for price in [floor_price, avg_sales_price] if price > 0]
+    prices = [price for price in [floor_price, floor_price, avg_sales_price] if price > 0]
     
     if not prices:
         return 0  # No valid price data
@@ -90,8 +90,10 @@ def getFloorPrice(data):
     return mean(eth_prices) if eth_prices else 0
 
 def getNftSalesPrice(data):
-    """Calculate the average sales price from the transfer history."""
+    """Calculate the average sales price from the transfer history, excluding outliers."""
     transfers = data.get("transfers", [])
+    
+    # Extract ETH prices from the transfers
     eth_prices = [
         transfer["sale_details"]["unit_price"]
         for transfer in transfers
@@ -99,7 +101,26 @@ def getNftSalesPrice(data):
         and not transfer["sale_details"]["is_bundle_sale"]
         and transfer["sale_details"]["payment_token"]["symbol"] == "ETH"
     ]
-    return mean(eth_prices) if eth_prices else 0
+    
+    if not eth_prices:
+        return 0  # No valid prices found
+    
+    # Calculate the interquartile range (IQR)
+    eth_prices.sort()
+    q1 = eth_prices[len(eth_prices) // 4]  # First quartile
+    q3 = eth_prices[3 * len(eth_prices) // 4]  # Third quartile
+    iqr = q3 - q1
+
+    # Define acceptable range
+    lower_bound = q1 - 1.5 * iqr
+    upper_bound = q3 + 1.5 * iqr
+
+    # Filter out outliers
+    filtered_prices = [price for price in eth_prices if lower_bound <= price <= upper_bound]
+
+    # Return the mean of the filtered prices
+    return mean(filtered_prices) if filtered_prices else 0
+
 
 def getRarity(data):
     rank = data.rarity.rank
