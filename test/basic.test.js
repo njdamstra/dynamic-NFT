@@ -135,7 +135,8 @@ describe("UserPortal", function () {
             throw new Error("borrower1 and borrower2 should own GoodNft tokenId 0 and 1 respectively.");
         }
     });
-
+    //TODO
+    // @RTest 1 - supply
     describe("Lender Functions", function () {
         it("should allow lender1 to supply 10 ETH to the pool", async function () {
             const lenderBalBefore = await ethers.provider.getBalance(lender1Addr);
@@ -167,7 +168,8 @@ describe("UserPortal", function () {
           console.log("Lender1's balance after: ", lenderBalAfter.toString());
         });
     });
-
+    //TODO
+    // @RTest 3 - add Collateral
     describe("Borrower Adds Collateral Once", function () {
         beforeEach(async function () {
           // lender1 supplies 10 ETH to the pool for liquidity
@@ -244,7 +246,8 @@ describe("UserPortal", function () {
         });
 
     });
-
+    //TODO
+    // @RTest 4 - borrow
     describe("Borrower Gets a Loan Using 1 NFT as Collateral", function () {
         beforeEach(async function () {
             // lender1 supplies 10 ETH to the pool for liquidity
@@ -338,7 +341,7 @@ describe("UserPortal", function () {
             console.log("total amount lender1 has supplied after interest: ", totalSuppliedLender);
             expect(totalSuppliedLender).to.equal(amountBorrowing + amountOwed);
         });
-        it("should allow borrower1 to redeem there collateral!", async function () {
+        it("should allow borrower1 to redeem their collateral!", async function () {
             const amountBorrowing = parseEther("5");
             console.log("borrow 5 Eth");
             await portal.connect(borrower1).borrow(amountBorrowing);
@@ -358,6 +361,9 @@ describe("UserPortal", function () {
         });
 
     });
+
+    //TODO
+    // @ RTest
     describe("Contract recognizes Borrower is liquidatable", function () {
         beforeEach(async function () {
             let amountLending = parseEther("10");
@@ -412,6 +418,8 @@ describe("UserPortal", function () {
         });
     });
 
+    //TODO
+    // @RTest 8 - purchase Nft
     describe("NftTrader purchasing, bidding and delisting on one NFT", function () {
         beforeEach(async function () {
             let amountLending = parseEther("10");
@@ -601,6 +609,8 @@ describe("UserPortal", function () {
 
         })
     });
+    //TODO
+    // @RTest
     describe("Borrower1 adds multiple NFTs as Collateral", function () {
         beforeEach(async function () {
             let amountLending1 = parseEther("10");
@@ -690,6 +700,8 @@ describe("UserPortal", function () {
         })
     })
 
+    //TODO
+    // Scenario
     describe("Dynamic Liquidation Scenarios", function () {
         beforeEach(async function () {
             // set NFT PRICES
@@ -759,6 +771,8 @@ describe("UserPortal", function () {
             expect(nftsNotToLiquidate.length).to.equal(2);
         });
     });
+    //TODO
+
     describe("Interest increases", function () {
         beforeEach( async function () {
             bNft1 = parseEther("100");
