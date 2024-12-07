@@ -50,6 +50,6 @@ interface ILendingPool {
     function deleteBorrower(address borrower) external;
     function addLenderIfNotExists(address lender) external;
     function deleteLender(address lender) external;
-    function getTotalBorrowedUsers(address borrower) external returns (uint256);
+    function getTotalBorrowedUsers(address borrower) external view returns (uint256);
     function updateBorrowersInterest() external;
 }

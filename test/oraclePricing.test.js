@@ -139,8 +139,8 @@ describe("Sophisticated Oracle Pricing Mechanism", function () {
     
         // Mint NFTs for borrower1 and borrower2
         console.log("Minting GoodNfts to borrower1 and borrower2... ");
-        await gNft.connect(deployer).mint(borrower1Addr);
-        await gNft.connect(deployer).mint(borrower2Addr);
+        await gNft.connect(deployer).mint(borrower1Addr); // tokenId = 0
+        await gNft.connect(deployer).mint(borrower2Addr); // tokenId = 1
         const owner0 = await gNft.ownerOf(0);
         const owner1 = await gNft.ownerOf(1);
         if (owner0 != borrower1Addr || owner1 != borrower2Addr) {

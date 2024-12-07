@@ -695,11 +695,11 @@ describe("UserPortal", function () {
             // set NFT PRICES
             // bNft0 = parseEther("40");
             // await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 0, bNft0);
-            bNft1 = parseEther("30");
+            bNft1 = parseEther("100");
             await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 1, bNft1);
             bNft2 = parseEther("20");
             await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 2, bNft2);
-            bNft3 = parseEther("100");
+            bNft3 = parseEther("30");
             await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 3, bNft3);
 
             // mint BadNft to borrower1:
@@ -717,22 +717,16 @@ describe("UserPortal", function () {
             await portal.connect(borrower1).addCollateral(bNftAddr, 2);
             await portal.connect(borrower1).addCollateral(bNftAddr, 3);
 
-            amountBorrowing1 = parseEther("50");
+            amountBorrowing1 = parseEther("45");
             await portal.connect(borrower1).borrow(amountBorrowing1);
         });
         it("should only liquidate some of borrower1's NFTs", async function () {
-            const newBNft3 = parseEther("15");
-            const price3Before = await nftValues.getNftPrice(bNftAddr, 3);
-            const oracle3Before = await mockOracle.getNftPrice(bNftAddr, 3);
-            await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 3, newBNft3);
+            const newBNft1 = parseEther("15");
+            await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 1, newBNft1);
             await portal.connect(borrower1).refresh();
-            await portal.connect(borrower1).refresh();
-            const price3After = await nftValues.getNftPrice(bNftAddr, 3);
-            const oracle3After = await mockOracle.getNftPrice(bNftAddr, 3);
-            console.log("bNft3 price before:", price3Before.toString());
-            console.log("bNft3 price after:", price3After.toString());
-            console.log("bNft3 oracle price before:", oracle3Before.toString());
-            console.log("bNft3 oracle price after:", oracle3After.toString());
+            // await portal.connect(borrower1).refresh();
+
+            
 
             const [totalDebt, netDebt, , colValue, hf] = await lendingPool.connect(borrower1).getUserAccountData(borrower1Addr);
             console.log("Borrower1's total debt: ", totalDebt.toString());
@@ -751,7 +745,57 @@ describe("UserPortal", function () {
             console.log("bNft1 is listing in trader:", b1listing.toString());
             console.log("bNft2 is listing in trader:", b2listing.toString());
             console.log("bNft3 is listing in trader:", b3listing.toString());
+
+            expect(b1listing).to.be.false;
+            expect(b2listing).to.be.false;
+            expect(b3listing).to.be.true;
+
+            const result = await collateralManager.connect(deployer).getNFTsToLiquidate(borrower1Addr);
+            const nftsToLiquidate = result[0];
+            const nftsNotToLiquidate = result[1];
+            console.log("length of nftsToLiquidate:", nftsToLiquidate.length);
+            console.log("length of nftsNotToLiquidate:", nftsNotToLiquidate.length);
+            expect(nftsToLiquidate.length).to.equal(1);
+            expect(nftsNotToLiquidate.length).to.equal(2);
         });
+    });
+    describe("Interest increases", function () {
+        beforeEach( async function () {
+            bNft1 = parseEther("100");
+            await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 1, bNft1);
+
+            // mint BadNft to borrower1:
+            await bNft.connect(deployer).mint(borrower1Addr);
+            await bNft.connect(deployer).mint(borrower1Addr);
+
+            let amountLending1 = parseEther("150");
+            await portal.connect(lender1).supply(amountLending1, { value: amountLending1 });
+            // borrower1 adds NFT GoodNft tokenId1 as collateral via portal
+            await bNft.connect(borrower1).setApprovalForAll(portalAddr, true);
+            // await portal.connect(borrower1).addCollateral(bNftAddr, 0);
+            await portal.connect(borrower1).addCollateral(bNftAddr, 1);
+
+            amountBorrowing1 = parseEther("50");
+            await portal.connect(borrower1).borrow(amountBorrowing1);
+        })
+        it("Should increase total debt by 2% after 30 days", async function () {
+            const [totalDebt, netDebt, , , hf] = await lendingPool.getUserAccountData(borrower1Addr);
+            expect(netDebt).to.equal(parseEther("50"));
+            expect(totalDebt).to.equal(parseEther("55"));
+            expect(hf).to.equal(136);
+            console.log("increasing time by 30 * 24 * 60 * 60 seconds")
+            await network.provider.send("evm_increaseTime", [30 * 24 * 60 * 60]); // Increase time by 20002 seconds
+            await network.provider.send("evm_mine");
+            await portal.connect(deployer).refresh();
+            const [totalDebt2, netDebt2, , , hf2] = await lendingPool.getUserAccountData(borrower1Addr);
+            console.log("total debt after 30 days:", totalDebt2);
+            console.log("net debt after 30 days:", netDebt2);
+            console.log("hf after 30 days:", hf2);
+
+            expect(totalDebt2).to.equal(parseEther((55 + 55*.02).toString()));
+            expect(netDebt2).to.equal(parseEther("50"));
+            expect(hf2).to.equal(133);
+        })
     })
     
 
