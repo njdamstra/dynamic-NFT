@@ -360,40 +360,74 @@ contract CollateralManager is IERC721Receiver {
 
         if (healthFactor < 100) {
             // Determine the minimal set of NFTs to liquidate
-            Nft[] memory nftsToLiquidate = getNFTsToLiquidate(borrower);
+            Nft[] memory nftsToLiquidate, Nft[] memory nftsNotToLiquidate = getNFTsToLiquidate(borrower);
 
-            uint256 updatedCollateralValue = getCollateralValue(borrower);
-            uint256 updatedTotalDebt = iLendingPool.getTotalBorrowedUsers(borrower);
+            // uint256 updatedCollateralValue = getCollateralValue(borrower);
+            // uint256 updatedTotalDebt = iLendingPool.getTotalBorrowedUsers(borrower);
 
             // Mark selected NFTs as being liquidated
-            for (uint256 i = 0; i < nftsToLiquidate.length; i++) {
-                Nft memory nft = nftsToLiquidate[i];
-                // Find the NFT in the storage array
-                for (uint256 j = 0; j < nftListLength; j++) {
-                    Nft storage item = profile.nftList[j];
+            for (uint256 i = 0; i < nftListLength; i++) {
+                Nft storage item = profile.nftList[i];
+                bool liquidate = false;
+                for (uint256 j = 0; j < nftsToLiquidate.length; j++) {
+                    Nft memory nft = nftsToLiquidate[j];
                     if (
                         item.collectionAddress == nft.collectionAddress &&
-                        item.tokenId == nft.tokenId &&
-                        !item.isBeingLiquidated
+                        item.tokenId == nft.tokenId
                     ) {
-                        addTradeListing(borrower, item.collectionAddress, item.tokenId);
-                        item.isBeingLiquidated = true;
-                        break;
+                        liquidate = true;
+                        if (!item.isBeingLiquidated) {
+                            item.isBeingLiquidated = true;
+                            addTradeListing(borrower, item.collectionAddress, item.tokenId);
+                            break;
+                        }
+                    }
+                }
+                if (!liquidate) {
+                    for (uint256 j = 0; j < nftsNotToLiquidate.length; j++) {
+                        Nft memory nft = nftsNotToLiquidate[j];
+                        if (
+                            item.collectionAddress == nft.collectionAddress &&
+                            item.tokenId == nft.tokenId
+                        ) {
+                            if (item.isBeingLiquidated) {
+                                item.isBeingLiquidated = false;
+                                delistTrade(borrower, item.collectionAddress, item.tokenId);
+                                break;
+                            }
 
-                        // // simulate liquidation
-                        // uint256 nftValue = getBasePrice(item.collectionAddress, item.tokenId);
-                        // updatedCollateralValue -= nftValue;
-                        // uint256 debtReduction = nftValue > updatedTotalDebt ? updatedTotalDebt : nftValue;
-                        // updatedTotalDebt -= debtReduction;
-
-                        // uint256 newHealthFactor = calculateHealthFactor(updatedCollateralValue, updatedTotalDebt);
-                        // if (newHealthFactor >= 100) {
-                        //     profile.isLiquidatable = true;
-                        //     return;
-                        // }
+                        }
                     }
                 }
             }
+            // for (uint256 i = 0; i < nftsToLiquidate.length; i++) {
+            //     Nft memory nft = nftsToLiquidate[i];
+            //     // Find the NFT in the storage array
+            //     for (uint256 j = 0; j < nftListLength; j++) {
+            //         Nft storage item = profile.nftList[j];
+            //         if (
+            //             item.collectionAddress == nft.collectionAddress &&
+            //             item.tokenId == nft.tokenId &&
+            //             !item.isBeingLiquidated
+            //         ) {
+            //             addTradeListing(borrower, item.collectionAddress, item.tokenId);
+            //             item.isBeingLiquidated = true;
+            //             break;
+
+            //             // // simulate liquidation
+            //             // uint256 nftValue = getBasePrice(item.collectionAddress, item.tokenId);
+            //             // updatedCollateralValue -= nftValue;
+            //             // uint256 debtReduction = nftValue > updatedTotalDebt ? updatedTotalDebt : nftValue;
+            //             // updatedTotalDebt -= debtReduction;
+
+            //             // uint256 newHealthFactor = calculateHealthFactor(updatedCollateralValue, updatedTotalDebt);
+            //             // if (newHealthFactor >= 100) {
+            //             //     profile.isLiquidatable = true;
+            //             //     return;
+            //             // }
+            //         }
+            //     }
+            // }
             profile.isLiquidatable = true;
         } else {
             // Delist NFTs that were being liquidated
@@ -408,7 +442,7 @@ contract CollateralManager is IERC721Receiver {
         }
     }
 
-    function getNFTsToLiquidate(address borrower) public returns (Nft[] memory) {
+    function getNFTsToLiquidate(address borrower) public returns (Nft[] memory, Nft[] memory) {
         uint256 totalDebt = iLendingPool.getTotalBorrowedUsers(borrower);
         Nft[] memory nftList = getNftList(borrower);
         uint256 nftCount = nftList.length;
@@ -422,7 +456,7 @@ contract CollateralManager is IERC721Receiver {
         // If health factor is already >= 120, no need to liquidate
         if (healthFactor >= 100) {
             Nft[] memory emptyNft = new Nft[](0);
-            return emptyNft; // Return empty array
+            return emptyNft, nftList; // Return empty array
         }
 
         // Prepare array to store NFTs to liquidate
@@ -430,6 +464,9 @@ contract CollateralManager is IERC721Receiver {
         // Nft[] memory nftsToLiquidate = new Nft[];
         // Nft[] storage nftsToLiquidate
         uint256 nftsToLiquidateCount = 0;
+
+        Nft[] memory nftsNotToLiquidate = new Nft[](nftCount);
+        uint256 nftsNotToLiquidateCount = 0;
 
         // Sort NFTs by their impact on health factor (e.g., by value)
         // For simplicity, let's sort them in descending order of value
@@ -463,19 +500,24 @@ contract CollateralManager is IERC721Receiver {
                 break;
             }
         }
+        for (uint256 i = nftsToLiquidateCount - 1; i < nftCount; i++) {
+            Nft memory nft = sortedNfts[i];
+            nftsNotToLiquidate[nftsNotToLiquidateCount] = nft;
+            nftsNotToLiquidateCount++;
+        }
 
-        // Resize the array to the actual number of NFTs to liquidate
-        // bytes memory encoded = abi.encode(nftsToLiquidate);
-        // assembly {
-        //     mstore(add(encoded, 0x40), nftsToLiquidateCount)
-        // }
-        // nftsToLiquidate = abi.decode(encoded, (Nft[]));
+        // Resize the array;
         Nft[] memory finalNftsToLiquidate = new Nft[](nftsToLiquidateCount);
         for (uint256 i = 0; i < nftsToLiquidateCount; i++) {
             finalNftsToLiquidate[i] = nftsToLiquidate[i];
         }
 
-        return finalNftsToLiquidate;
+        Nft[] memory finalNftsNotToLiquidate = new Nft[](nftsNotToLiquidateCount);
+        for (uint256 i = 0; i < nftsNotToLiquidateCount; i++) {
+            finalNftsNotToLiquidate[i] = nftsNotToLiquidate[i];
+        }
+
+        return finalNftsToLiquidate, finalNftsNotToLiquidate;
     }
 
     function sortNftsByValueDescending(Nft[] memory nfts) internal view returns (Nft[] memory) {

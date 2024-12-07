@@ -5,6 +5,7 @@ from statistics import mean
 
 
 # main function being called
+## collection = "gNft", "bNft" # token_id = 0, 1, 2, 3, 4 ... # iteration = 1,2,3,4,5 ...
 def getNftPrice(collection, token_id, iteration):
     # print(f"Received: collection={collection}, token_id={token_id}, iteration={iteration}")
     general_data = getGeneralJsonFile(collection, token_id, iteration)
@@ -54,7 +55,7 @@ def security_checks(data):
 
 
 def getGeneralJsonFile(collection, token_id, iteration):
-    file_path = f"scripts/mockOracles/data/{collection}_{token_id}_general_{iteration}.json"
+    file_path = f"scripts/mockOracles/data/{collection}/{collection}_general_{iteration}.json"
     try:
         with open(file_path, "r") as file:
             return json.load(file)
@@ -67,7 +68,7 @@ def getGeneralJsonFile(collection, token_id, iteration):
 
 def getSalesJsonFile(collection, token_id, iteration):
     """Load the sales data JSON file."""
-    file_path = f"scripts/mockOracles/data/{collection}_{token_id}_sales_{iteration}.json"
+    file_path = f"scripts/mockOracles/data/{collection}/{collection}_{token_id}_sales.json"
     try:
         with open(file_path, "r") as file:
             return json.load(file)
