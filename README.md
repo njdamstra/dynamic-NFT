@@ -1,70 +1,10 @@
-# Important Contents for now:
-
-* make sure prereqs are installed and you update .env with all the keys
-* I haven't played around much with chainlink aggregator so that could be something looking into
-* I am using Alchemy NFT API for NFT oracle data. see the Alchemy API section and the hardhat local network testing section.
-* if you run into errors with npm install or any of that functions children, I have a guide at the bottom detailing how to deal with it
-
-# What's done:
-
-* update floor prices
-* fetch floor prices
-* see who owns what nft's
-
-# Todo's still:
-
-* Interface for borrower
-  * what functions can they call?
-  * What do they get and receive?
-  * what do they need to provide / what do we need to know from them?
-* Interface for loaner
-  * What functions can they call?
-  * What do they get and receive?
-  * what do they need to provide / what do we need to know from them?
-* Loan pool logic (only ETH)
-  * loaner --> stake tokens, withdraw, 
-* Collateral bundling logical evolution: (challenge gets progressively harder)
-  * **1 NFT as collateral (Full implementation with just this first)**
-  * provide multiple NFT's from same NFT collection as collateral
-  * provide multiple NFT's from different collections as collateral??
-  * provide multiple NFT's from same NFT collection as collateral, recollateralize debt with an NFT from the same collection
-  * provide multiple NFT's from same NFT collection as collateral, recollateralize debt with an NFT from a different collection
-  * provide multiple NFT's from different collections as collateral, recollateralize debt with an NFT from a different collection
-* Liquidation logic for liquidating NFT collateral
-
-
-# Work Split
-
-## Nate
-
-
-
-## Varun
-gear box system bundling together NFTs and different types of collateral
-**Build the collateral bundling system and recollateralization logic**
-
-## Srimanji
-
-
-
-## Felix
-
-
-
-## Jonathan
-
-
-
+# Dynamic NFT Collateralization Protocal
 
 # Getting started:
 
-
 ## Prerequisites:
-1. Node.js and npm [installed](https://nodejs.org/en)
-2. Install the browser extension from [MetaMask](https://metamask.io/)
-3. Sign up with [Infura](https://www.infura.io/) to get your project ID for the Sepolia testnet
-4. Optional: create an [Etherscan](https://docs.etherscan.io) account using these steps and getting an API key for contract verification
 
+1. Node.js and npm [installed](https://nodejs.org/en)
 
 ## Clone repo and install dependencies and create .env file
 dynamic-NFT repository link: https://github.com/njdamstra/dynamic-NFT.git
@@ -76,43 +16,17 @@ npm install // installs dependencies like Hardhat, OpenZeppelin Contracts, Ether
 touch .env // set up Environment Variables
 ```
 
-### Copy this in your .env file replacing the fields with your personal keys
-```
-INFURA_PROJECT_ID=your_infura_project_id // from your infura account dashboard
-PRIVATE_KEY=your_private_key // Export your wallets's private key from MetaMask dedicated to a testnet wallet
-ETHERSCAN_API_KEY=your_etherscan_api_key // optional, used for contract verification. Obtain this from your Etherscan account
-ALCHEMY_API_KEY=your_alchemy_api_key // use the same one you created for the lab :)
-```
-
-Make sure .env file is included in .gitignore to keep sensitive data secure
-
-# Tutorials:
-
-# Testing Tutorial (IMPORTANT)
+# Testing
 
 ## Compile and Test Smart Contracts
 
 ```shell
 npx hardhat compile // Try to compile the contract. This will generate artifacts in the artifacts/ and cache/ directories.
 npx hardhat test // Tests are located in the test/ directory and are written using Mocha and Chai.
-npx hardhat test test/NFTPricing.test.js // for testing a specific test file
+npx hardhat test test/basic.test.js // for testing a specific test file
 ```
 
-## Deploy to Sepolia Testnet and Verify Contract on Etherscan (Ignore this step for now):
-
-```shell
-npx hardhat run scripts/deploy.js --network sepolia // deployment script. copy the deployed contract address from the terminal output for further use.
-npx hardhat verify --network sepolia DEPLOYED_CONTRACT_ADDRESS // Optional if you added Etherscan APU key to .env. replace address with the address output from the deployment step above.
-```
-
-# Hardhat local Network testing (IMPORTANT AND MOST RELEVANT)!!!
-
-* some of the steps thus far have prompted you to get keys to deploy to sepolia testnet... its complicated and hard 
-* I'll ask the TA to help use with that but we shouldn't need to deploy to the testnet for a while :)
-* So you may ask... how will we test our contract as if it were on the Ethereum Blockchian???? Muahahahaha
-  * Do I have something to show you
-* Introducing the local hardhat network!!!
-how to use it? here's a step by step guide and some tests you should run as you read this!!!
+# Hardhat local Network testing
 
 1. in your terminal start a hardhat node:
 
