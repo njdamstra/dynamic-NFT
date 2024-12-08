@@ -30,6 +30,24 @@
       "name": "Azuki",
       "category": "pfps",
       "is_nsfw": false,
+      "marketplace_pages": [
+        {
+          "marketplace_id": "magiceden",
+          "marketplace_name": "Magic Eden",
+          "marketplace_collection_id": "ethereum/0xed5af388653567af2f388e6224dc7c4b3241c544",
+          "nft_url": "https://magiceden.io/item-details/ethereum/0xed5af388653567af2f388e6224dc7c4b3241c544/4666",
+          "collection_url": "https://magiceden.io/collections/ethereum/0xed5af388653567af2f388e6224dc7c4b3241c544",
+          "verified": null
+        },
+        {
+          "marketplace_id": "opensea",
+          "marketplace_name": "OpenSea",
+          "marketplace_collection_id": "azuki",
+          "nft_url": "https://opensea.io/assets/ethereum/0xed5af388653567af2f388e6224dc7c4b3241c544/4666",
+          "collection_url": "https://opensea.io/collection/azuki",
+          "verified": true
+        }
+      ],
       "floor_prices": [
         {
           "marketplace_id": "magiceden",

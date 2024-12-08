@@ -64,4 +64,16 @@ interface INftTrader {
     function listingState(address collection, uint256 tokenId) external view returns (uint);
 
     function getListing(address collection, uint256 tokenId) external view returns (Listing memory);
+
+    function getListingData(address collection, uint256 tokenId) external view returns (
+        uint256 basePrice,
+        uint256 auctionStarted,
+        uint256 auctionEnds,
+        uint256 highestBid,
+        bool buyNow
+    );
+
+    function getListingTokenIds() external view returns (uint256[] memory);
+
+    function getListingCollectionAddr() external view returns (address[] memory);
 }

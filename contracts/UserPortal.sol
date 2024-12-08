@@ -66,6 +66,15 @@ contract UserPortal is ReentrancyGuard, IERC721Receiver {
         iTrader.endAllConcludedAuctions();
     }
 
+    function getPoolData() public view returns (
+        uint256 poolBalance,
+        bool paused
+    ) {
+        paused = iPool.paused();
+        poolBalance = iPool.poolBalance();
+        return (poolBalance, paused);
+    }
+
 
 
     /////////// ** LENDER FUNCTIONS ** /////////////
@@ -83,6 +92,13 @@ contract UserPortal is ReentrancyGuard, IERC721Receiver {
     function withdraw(uint256 amount) external nonReentrant {
         refresh();
         iPool.withdraw(msg.sender, amount);
+    }
+
+    function getLenderAccountData() public view returns (
+        uint256 totalSupplied
+    ) {
+        ( , , totalSupplied, , )= iPool.getUserAccountData(msg.sender);
+        return totalSupplied;
     }
 
 
@@ -123,6 +139,20 @@ contract UserPortal is ReentrancyGuard, IERC721Receiver {
         // IERC721(collection).safeTransferFrom(address(this), msg.sender, tokenId);
     }
 
+    function getBorrowerAccountData() public view returns (
+        uint256 totalDebt,
+        uint256 netDebt,
+        uint256 collateralValue,
+        uint256 healthFactor,
+        uint256 periodicalInterest,
+        uint256 lastUpdated,
+        uint256 periodDuration
+    ) {
+        (totalDebt, netDebt, , collateralValue, healthFactor) = iPool.getUserAccountData(msg.sender);
+        (periodicalInterest, , lastUpdated, periodDuration) = iPool.getInterestProfile(msg.sender);
+        return (totalDebt, netDebt, collateralValue, healthFactor, periodicalInterest, lastUpdated, periodDuration);
+    }
+
 
     ///////////// ** LIQUIDATORS FUNCTIONS ** ////////////////
 
@@ -140,6 +170,26 @@ contract UserPortal is ReentrancyGuard, IERC721Receiver {
 
         // Forward the ETH and call purchase on NftTrader
         iTrader.purchase{value: msg.value}(msg.sender, collection, tokenId);
+    }
+
+    function getListings() public view returns (
+        address[] memory collectionAddresses,
+        uint256[] memory tokenIds
+    ) {
+        collectionAddresses = iTrader.getListingCollectionAddr();
+        tokenIds = iTrader.getListingTokenIds();
+        return (collectionAddresses, tokenIds);
+    }
+
+    function getListingData(address collectionAddress, uint256 tokenId) public view returns (
+        uint256 basePrice,
+        uint256 auctionStarted,
+        uint256 auctionEnds,
+        uint256 highestBid,
+        bool buyNow
+    ) {
+        (basePrice, auctionStarted, auctionEnds, highestBid, buyNow) = iTrader.getListingData(collectionAddress, tokenId);
+        return (basePrice, auctionStarted, auctionEnds, highestBid, buyNow);
     }
 
 

@@ -286,6 +286,41 @@ contract NftTrader is IERC721Receiver {
         emit NFTPurchased(collection, tokenId, msg.value, buyer, block.timestamp);
     }
 
+    function getListingCollectionAddr() public view returns (address[] memory) {
+        address[] memory addresses = new address[](listings.length);
+        for (uint256 i = 0; i < listings.length; i++) {
+            addresses[i] = listings[i].collection;
+        }
+        return addresses;
+    }
+
+    function getListingTokenIds() public view returns (uint256[] memory) {
+        uint256[] memory tokenIds = new uint256[](listings.length);
+        for (uint256 i = 0; i < listings.length; i++) {
+            tokenIds[i] = listings[i].tokenId;
+        }
+        return tokenIds;
+    }
+
+    function getListingData(address collection, uint256 tokenId) public view returns (
+        uint256 basePrice,
+        uint256 auctionStarted,
+        uint256 auctionEnds,
+        uint256 highestBid,
+        bool buyNow
+    ) {
+        if (!isListingMapping[collection][tokenId]) {
+            return (0, 0, 0, 0, false);
+        }
+        uint256 index = listingIndex[collection][tokenId];
+        Listing memory listing = listings[index];
+        if (listing.collection == collection && listing.tokenId == tokenId) {
+            return (listing.basePrice, listing.auctionStarted, listing.auctionEnds, listing.highestBid, listing.buyNow);
+        } else {
+            return (0, 0, 0, 0, false);
+        }
+    }
+
     // Withdraw funds NOT NEEDED
     // function withdraw(address payable destinationAddress) public onlyCollateralManager {
     //     require(0 < balances[destinationAddress], "[*ERROR*] nothing to be withdrawed");

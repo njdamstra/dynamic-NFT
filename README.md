@@ -33,7 +33,7 @@ npx hardhat test test/basic.test.js // for testing a specific test file
 ```shell
 npx hardhat node
 ```
-* there should be a bunch of account addresses and there corresponding private keys
+* there should be a bunch of account addressses and there corresponding private keys
 
 2. Open a new terminal window (keep the other one open and running npx hardhat node)
 
@@ -62,6 +62,77 @@ if everything works well, you should see floor price updated successfully!
 
 
 # Oracles
+
+# NFT Pricing and Validation
+
+This system determines a fair market price for NFTs using data from the **Simplehash API**, which provides metadata and sales history for NFTs. The process includes validation, price calculation, and safety checks to ensure accuracy.
+
+---
+
+## Data Sources
+- **General Metadata**: Includes collection details, token rarity, floor prices, and marketplace verification.
+- **Sales History**: Details past transactions, prices, and timestamps for individual NFTs.
+
+---
+
+## Pricing Process
+
+1. **Data Retrieval**:
+   - Load collection metadata and sales history from Simplehash API responses.
+
+2. **Validation**:
+   - Check if the NFT meets specific criteria (blockchain type, contract type, marketplace verification, and ownership distribution).
+
+3. **Price Calculation**:
+   - **Floor Price**: Average floor price across verified marketplaces (e.g., OpenSea, Blur, LooksRare).
+   - **Sales History**: Time-weighted average of sales prices, excluding outliers.
+   - Combine valid prices to compute a fair market value.
+
+4. **Decision on Pricing Basis**:
+   - Use the floor price alone if the NFT has:
+     - High rarity rank (rank > total NFTs / 2).
+     - Low rarity score (< 1.0).
+     - Low ownership distribution (< 20% unique ownership).
+     - Sparse sales history (< 3 sales).
+
+---
+
+## Validation Criteria
+
+### **Acceptance Checks**
+- **Blockchain**: Must be on Ethereum.
+- **Contract**: Must be ERC721.
+- **Marketplaces**: Verified on at least one trusted platform (OpenSea, Blur, LooksRare).
+- **Ownership**: Must have at least 10 distinct owners.
+- **NSFW**: Collection must not be flagged as NSFW.
+
+### **Floor Price Decision**
+- Rarity rank, score, ownership distribution, and sales history determine whether the floor price should be solely relied upon.
+
+---
+
+## Key Functions
+
+### `getNftPrice(collection_name, token_id, iteration)`
+Calculates the fair price of an NFT by combining the floor price and sales history, or using the floor price alone if necessary.
+
+### `getFloorPrice(collection_data)`
+Computes the average floor price across verified marketplaces.
+
+### `getNftSalesPrice(sales_data)`
+Calculates the time-weighted average sales price, excluding outliers based on interquartile range (IQR).
+
+### `canAcceptNFT(sales_data, collection_data)`
+Validates if the NFT meets the criteria for inclusion based on blockchain, contract, marketplace verification, and ownership distribution.
+
+### `onlyUseFloorPrice(sales_data, collection_data)`
+Determines if the floor price should be the sole basis for valuation based on rarity, ownership, and sales history.
+
+---
+
+## Conclusion
+By leveraging verified data from the **Simplehash API**, this system combines robust validation with reliable pricing methods to produce accurate and safe valuations for NFTs.
+
 
 ## Chainlink
 Use Chainlink price feeds to track the value of reserves

@@ -30,7 +30,15 @@ interface ILendingPool {
     returns (
         uint256 totalDebt,
         uint256 netDebt,
-        uint256 totalSupplied
+        uint256 totalSupplied,
+        uint256 collateralValue,
+        uint256 healthFactor
+    );
+    function getInterestProfile(address borrower) external view returns (
+        uint256 periodicalInterest,
+        uint256 initalTimeStamp,
+        uint256 lastUpdated,
+        uint256 periodDuration
     );
 
     function getBorrowerList() external view returns (address[] memory);

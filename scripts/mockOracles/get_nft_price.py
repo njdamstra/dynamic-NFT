@@ -1,28 +1,30 @@
 import json
 import sys
 from statistics import mean
-
+from datetime import datetime
 
 
 # main function being called
 ## collection = "gNft", "bNft" # token_id = 0, 1, 2, 3, 4 ... # iteration = 1,2,3,4,5 ...
-def getNftPrice(collection, token_id, iteration):
+def getNftPrice(collection_name, token_id, iteration):
     # print(f"Received: collection={collection}, token_id={token_id}, iteration={iteration}")
-    general_data = getGeneralJsonFile(collection, token_id, iteration)
-    sales_data = getSalesJsonFile(collection, token_id, iteration)
+    collection_data = getGeneralJsonFile(collection_name, token_id, iteration)
+    sales_data = getSalesJsonFile(collection_name, token_id)
     # Prerequisite and security checks
-    if not satisfy_prerequisites(general_data, collection, token_id):
+    if not canAcceptNFT(sales_data, collection_data):
         return 0
 
-    if not security_checks(general_data):
-        return 0
+    floor_price = getFloorPrice(general_data)
+
+    if onlyUseFloorPrice(sales_date, collection_data):
+        return floor_price
 
     # Extract relevant pricing data
-    floor_price = getFloorPrice(general_data)
+    
     avg_sales_price = getNftSalesPrice(sales_data)
 
     # Combine prices to determine fair price
-    prices = [price for price in [floor_price, floor_price, avg_sales_price] if price > 0]
+    prices = [price for price in [floor_price, avg_sales_price] if price > 0]
     
     if not prices:
         return 0  # No valid price data
@@ -35,23 +37,65 @@ def getNftPrice(collection, token_id, iteration):
 
 ### helper functions
 
-def satisfy_prerequisites(data, collection, token_id):
-    # data["name"] == "{collection} #{token_id}"
+def canAcceptNFT(sales_data, collection_data):
+    """Determine if the NFT is acceptable."""
     try:
-        return (
-            data["chain"] == "ethereum"
-            and data["contract"]["type"] == "ERC721"
-            and not data["collection"]["is_nsfw"]
-        )
+        if not collection_data["chain"] == "ethereum" and not colleciton_data["contract"]["type"] == "ERC721":
+            return False
+
+        # Check if the collection is verified on at least one legitimate marketplace
+        marketplaces = collection_data.get("collection", {}).get("marketplace_pages", [])
+        verified_marketplaces = [
+            market
+            for market in marketplaces
+            if market.get("marketplace_name") in ["OpenSea", "Blur", "LooksRare"] and market.get("verified", True)
+        ]
+        if not verified_marketplaces:
+            return False  # Require at least one verified marketplace
+
+        # Check that there are distinct owners
+        distinct_owners = collection_data.get("collection", {}).get("distinct_owner_count", 0)
+        if distinct_owners < 10:  # Require at least 10 unique owners
+            return False
+
+        # Check for NFT-specific criteria, e.g., not NSFW
+        if collection_data.get("collection", {}).get("is_nsfw", False):
+            return False
+
+        return True
     except KeyError as e:
         print(f"Missing key in data: {e}")
         return False
-    
 
+def onlyUseFloorPrice(sales_data, collection_data):
+    """Determine if the floor price should be used for the NFT valuation."""
+    rarity = collection_data.get("rarity", {})
+    rank = rarity.get("rank", None)
+    score = rarity.get("score", None)
 
+    num_owners = collection_data.get("collection", {}).get("distinct_owner_count", 0)
+    total_quantity = collection_data.get("collection", {}).get("total_quantity", 0)
+    sales_count = getNumberOfSales(sales_data)
 
-def security_checks(data):
-    return True
+    # High rank threshold is distinct_nft_count / 2
+    high_rank_threshold = collection_data.get("collection", {}).get("distinct_nft_count", 0) / 2
+
+    # Criteria for using the floor price:
+    # 1. Very high rarity rank
+    if rank and rank > high_rank_threshold:
+        return True
+    # 2. Low rarity score
+    if score and score < 1.0:
+        return True
+    # 3. Low number of owners compared to total NFTs
+    if total_quantity > 0 and (num_owners / total_quantity) < 0.2:  # Less than 20% unique ownership
+        return True
+    # 4. Few sales or unreliable sales history
+    if sales_count < 3:
+        return True
+
+    # Otherwise, don't use the floor price
+    return False
 
 
 def getGeneralJsonFile(collection, token_id, iteration):
@@ -66,7 +110,7 @@ def getGeneralJsonFile(collection, token_id, iteration):
         print(f"Invalid JSON in file: {file_path}")
         return {}
 
-def getSalesJsonFile(collection, token_id, iteration):
+def getSalesJsonFile(collection, token_id):
     """Load the sales data JSON file."""
     file_path = f"scripts/mockOracles/data/{collection}/{collection}_{token_id}_sales.json"
     try:
@@ -107,6 +151,7 @@ def getNftSalesPrice(data):
         return 0  # No valid prices found
     
     # Calculate the interquartile range (IQR)
+    eth_prices = [sale[0] for sale in eth_sales]
     eth_prices.sort()
     q1 = eth_prices[len(eth_prices) // 4]  # First quartile
     q3 = eth_prices[3 * len(eth_prices) // 4]  # Third quartile
@@ -117,17 +162,45 @@ def getNftSalesPrice(data):
     upper_bound = q3 + 1.5 * iqr
 
     # Filter out outliers
-    filtered_prices = [price for price in eth_prices if lower_bound <= price <= upper_bound]
+    filtered_sales = [(price, timestamp) for price, timestamp in eth_sales if lower_bound <= price <= upper_bound]
 
-    # Return the mean of the filtered prices
-    return mean(filtered_prices) if filtered_prices else 0
+    if not filtered_sales:
+        return 0  # No valid prices after filtering
 
+    # Calculate time weights
+    now = datetime.utcnow()
+    weighted_prices = []
+    weights = []
+    
+    for price, timestamp in filtered_sales:
+        # Parse the timestamp into a datetime object
+        sale_time = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")
+        time_diff = (now - sale_time).total_seconds() / (60 * 60 * 24)  # Difference in days
 
-def getRarity(data):
-    rank = data.rarity.rank
-    score = data.rarity.score
-    unique_attributes = data.rarity.unique_attributes
-    return
+        # Assign a weight inversely proportional to the age of the sale
+        weight = 1 / (1 + time_diff)  # More recent sales have higher weights
+        weighted_prices.append(price * weight)
+        weights.append(weight)
+
+    # Compute the time-weighted average price
+    time_weighted_avg = sum(weighted_prices) / sum(weights) if weights else 0
+
+    return time_weighted_avg
+
+def getNumberOfSales(data):
+    """Calculate the number of sales for the NFT from the transfer history."""
+    transfers = data.get("transfers", [])
+    
+    # Filter for sales events only
+    sales_events = [
+        transfer for transfer in transfers
+        if transfer["event_type"] == "sale"
+        and not transfer["sale_details"]["is_bundle_sale"]
+        and transfer["sale_details"]["payment_token"]["symbol"] == "ETH"
+    ]
+    
+    # Return the count of sales events
+    return len(sales_events)
 
 def main():
     if len(sys.argv) != 4:
