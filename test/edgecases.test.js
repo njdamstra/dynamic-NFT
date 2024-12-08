@@ -399,11 +399,9 @@ describe("UserPortal", function () {
 
         it("[@ETest 5] Borrower should not be allowed to add not owned NFT to collateral", async function () {
             // borrower1 approves portal to transfer their NFT
-            console.log("Start testing it function 1... ");
             await gNft.connect(borrower1).setApprovalForAll(portalAddr, true);
 
             // borrower1 adds NFT as collateral via portal
-            console.log("listening for events... ");
             await expect(
                 portal.connect(borrower1).addCollateral(gNftAddr, 1)
             ).to.be.revertedWith("[*ERROR*] NFT collateral is invalid!");
@@ -415,7 +413,6 @@ describe("UserPortal", function () {
             // Check that the collateral profile does not include the NFT
             const profile = await collateralManager.getCollateralProfile(borrower1Addr);
             const nftListLength = profile.nftList.length;
-            console.log("nftListLength:", nftListLength.toString());
             expect(nftListLength).to.equal(0);
 
         });
@@ -456,7 +453,7 @@ describe("UserPortal", function () {
 
     //TODO
     // @ETest 7 - supply zero amount
-    describe("supply zero amount", function () {
+    describe("[@ETest 7] supply zero amount", function () {
         it("should not allow lender1 to supply 0 ETH to the pool", async function () {
             const lenderBalBefore = await ethers.provider.getBalance(lender1Addr);
             const amountLending = parseEther("0");
@@ -485,7 +482,7 @@ describe("UserPortal", function () {
 
     //TODO
     // @ETest 8 - supplying max support
-    describe("supply max amount", function () {
+    describe("[@ETest 8] supply max amount", function () {
         it("should not allow lender1 to supply 0 ETH to the pool", async function () {
             const lenderBalBefore = await ethers.provider.getBalance(lender1Addr);
             const amountLending = parseEther("999999999");
@@ -515,12 +512,40 @@ describe("UserPortal", function () {
     //TODO
     // @ETest 9 - bidding on non liquidatable collateral
 
+    describe("[@ETest 9 bidding on non liquidatable collateral]", function() {
+        it("should not allow lender1 to bid on non liquidatable collateral", async function () {
+
+            const bid1 = parseEther("100");
+            await expect(
+                portal.connect(lender1).placeBid(gNftAddr, 1, { value: bid1  })
+            ).to.revertedWith("token not listed");
+
+            const owner1 = await gNft.ownerOf(1);
+            expect(owner1).to.equal(lender2);
+
+        });
+    });
+
     //TODO
     // @ETest 10 - purchasing non liquidatable collateral
 
+    describe("[@ETest 10 purchasing non liquidatable collateral]", function() {
+        it("should not allow lender1 to bid on non liquidatable collateral", async function () {
+
+            const offer = parseEther("100");
+            await expect(
+                portal.connect(lender1).purchase(gNftAddr, 1, { value: offer  })
+            ).to.revertedWith("token not listed");
+
+            const owner1 = await gNft.ownerOf(1);
+            expect(owner1).to.equal(lender2);
+
+        });
+    });
+
     //TODO
     // @ETest 11 - withdraw zero amount
-    describe("withdraw zero amount", function () {
+    describe("[@ETest 11] withdraw zero amount", function () {
 
         it("should not allow to withdraw zero amount", async function () {
 
@@ -558,14 +583,15 @@ describe("UserPortal", function () {
 
     //TODO
     // @ETest 11 - withdraw max amount
-    describe("withdraw zero amount", function () {
+    describe("withdraw max amount", function () {
 
-        it("should not allow to withdraw zero amount", async function () {
+        it("should not allow to withdraw more than pool balance", async function () {
 
             //Lender 1 supplies 10 eth to the pool
             const amountLending = parseEther("10");
 
             await portal.connect(lender1).supply(amountLending, { value: amountLending });
+            await portal.connect(lender2).supply(amountLending, { value: amountLending });
             await expect(
                 portal.connect(lender1).supply(amountLending, { value: amountLending })
             ).to.emit(lendingPool, "Supplied").withArgs(lender1.address, amountLending);
@@ -592,7 +618,41 @@ describe("UserPortal", function () {
             const lenBalAfter = await ethers.provider.getBalance(lender1Addr);
             expect(lenderBalBefore).to.equal(lenBalAfter)
         })
-    });
 
+        it("should not allow to withdraw more than personal balance", async function () {
+
+            //Lender 1 supplies 10 eth to the pool
+            const amountLending = parseEther("10");
+
+            await portal.connect(lender1).supply(amountLending, { value: amountLending });
+            await portal.connect(lender2).supply(amountLending, { value: amountLending });
+            await expect(
+                portal.connect(lender1).supply(amountLending, { value: amountLending })
+            ).to.emit(lendingPool, "Supplied").withArgs(lender1.address, amountLending);
+
+            const lenderBalBefore = await ethers.provider.getBalance(lender1Addr);
+            const amountWithdraw = parseEther("15");
+
+            // Record initial pool balance
+            const initialPoolBalance = await lendingPool.getPoolBalance();
+
+            // lender1 withdraw ETH via portal
+            await expect(
+                portal.connect(lender1).withdraw(amountWithdraw)
+            ).to.revertedWith("[*ERROR*] Insufficient funds in balance!");
+
+            // Check pool balance
+            const poolBalance = await lendingPool.getPoolBalance();
+            expect(poolBalance).to.equal(initialPoolBalance);
+
+            // Check lender1's balance in LendingPool
+            const lenderBalance = await lendingPool.totalSuppliedUsers(lender1.address);
+            expect(lenderBalance).to.equal(amountLending);
+
+            const lenBalAfter = await ethers.provider.getBalance(lender1Addr);
+            expect(lenderBalBefore).to.equal(lenBalAfter)
+        })
+
+    });
 
 });
