@@ -202,7 +202,7 @@ contract LendingPool is ReentrancyGuard {
     function supply(address lender, uint256 amount) external payable onlyPortal {
         // console.log("pool.supply: lender:(${lender}), amount: ", amount)
         require(msg.value == amount, "[*ERROR*] supply: Incorrect amount of ETH supplied!");
-        require(amount > 0, " [*ERROR*] supply: Cannot supply zero ETH!");
+        require(amount > 0, "[*ERROR*] supply: Cannot supply zero ETH!");
 
         if (isLender(lender)) {
             totalSuppliedUsers[lender] += amount;
@@ -243,6 +243,7 @@ contract LendingPool is ReentrancyGuard {
     // Allows users to borrow ETH from the pool using NFT collateral
     function borrow(address borrower, uint256 amount) external nonReentrant whenNotPaused onlyPortal {
         require(amount <= poolBalance, "[*ERROR*] Insufficient pool liquidity!");
+        require(amount > 0, "[*ERROR*] Can not borrow zero ETH!");
         require(iCollateralManager.getHealthFactor(borrower) > 150, "[*ERROR*] Health factor too low to borrow more money!");
 
         // calculate interest as 10% of borrowed amount

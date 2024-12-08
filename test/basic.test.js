@@ -129,8 +129,8 @@ describe("UserPortal", function () {
         console.log("Minting GoodNfts to borrower1 and borrower2... ");
         await gNft.connect(deployer).mint(borrower1Addr);
         await gNft.connect(deployer).mint(borrower2Addr);
-        const owner0 = await gNft.ownerOf(0);
-        const owner1 = await gNft.ownerOf(1);
+        const owner0 = await gNft.ownerOf(0); //borrower1
+        const owner1 = await gNft.ownerOf(1); //borrower2
         if (owner0 != borrower1Addr || owner1 != borrower2Addr) {
             throw new Error("borrower1 and borrower2 should own GoodNft tokenId 0 and 1 respectively.");
         }
@@ -610,7 +610,7 @@ describe("UserPortal", function () {
         })
     });
     //TODO
-    // @RTest
+    // @Scenario
     describe("Borrower1 adds multiple NFTs as Collateral", function () {
         beforeEach(async function () {
             let amountLending1 = parseEther("10");

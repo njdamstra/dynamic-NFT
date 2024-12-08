@@ -146,9 +146,9 @@ contract CollateralManager is IERC721Receiver {
             }
         }
     }
-    //TODO
+
     function addCollateral(address borrower, address collectionAddress, uint256 tokenId) public onlyPortal {
-        // require(isNftValid(msg.sender, collectionAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
+        require(isNftValid(msg.sender, collectionAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
         // check whether borrower already exists
         CollateralProfile storage collateralProfile = borrowersCollateral[borrower];
         uint256 length = collateralProfile.nftList.length;
@@ -170,14 +170,14 @@ contract CollateralManager is IERC721Receiver {
 
         registerNft(collectionAddress, tokenId); // sends to NftValues to add to list of NFTs it keeps track of
         nftContract.approve(nftTraderAddress, tokenId); // Approves NftTrader to transfer NFT on CM's behalf -N
-        //TODO emit value
+
         // isBeingLiquidated[collectionAddress][tokenId] = false;
         emit CollateralAdded(borrower, collectionAddress, tokenId, 1, block.timestamp);
     }
 
     function redeemCollateral(address borrower, address collectionAddress, uint256 tokenId) public onlyPortal {
         uint256 healthFactor = getHealthFactor(borrower);
-        // require(isNftValid(borrower, collectionAddress,tokenId), "[*ERROR* Nft not valid]");
+        require(isNftValid(borrower, collectionAddress,tokenId), "[*ERROR* Nft not valid]");
         require(healthFactor > 100,"[*ERROR*] Health Factor has to be above 1.5 to redeem collateral!");
 
         // get a new List without the redeemed Nft
@@ -226,16 +226,9 @@ contract CollateralManager is IERC721Receiver {
         return nftList;
     }
 
-    //TODO NATE get the actual value from oracle nftvalue
     function getNftValue(address collectionAddress, uint256 tokenId) public view returns (uint256) {
         return iNftValues.getNftPrice(collectionAddress, tokenId);
     }
-
-
-    //TODO NATE get the actual listing price for nft from nfttrader
-    // function getNftListingPrice(address collectionAddress, uint256 tokenId) pure private returns (uint256) {
-    //     return 0;
-    // }
 
     function getListValue(Nft[] memory nftList) public view returns (uint256) {
         uint256 result = 0;
