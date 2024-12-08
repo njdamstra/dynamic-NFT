@@ -513,5 +513,86 @@ describe("UserPortal", function () {
     });
 
     //TODO
-    // @ETest 9 - bidding
+    // @ETest 9 - bidding on non liquidatable collateral
+
+    //TODO
+    // @ETest 10 - purchasing non liquidatable collateral
+
+    //TODO
+    // @ETest 11 - withdraw zero amount
+    describe("withdraw zero amount", function () {
+
+        it("should not allow to withdraw zero amount", async function () {
+
+            //Lender 1 supplies 10 eth to the pool
+            const amountLending = parseEther("10");
+
+            await portal.connect(lender1).supply(amountLending, { value: amountLending });
+            await expect(
+                portal.connect(lender1).supply(amountLending, { value: amountLending })
+            ).to.emit(lendingPool, "Supplied").withArgs(lender1.address, amountLending);
+
+            const lenderBalBefore = await ethers.provider.getBalance(lender1Addr);
+            const amountWithdraw = parseEther("0");
+
+            // Record initial pool balance
+            const initialPoolBalance = await lendingPool.getPoolBalance();
+
+            // lender1 withdraw ETH via portal
+            await expect(
+                portal.connect(lender1).withdraw(amountWithdraw)
+            ).to.revertedWith("[*ERROR*] Cannot withdraw zero ETH!");
+
+            // Check pool balance
+            const poolBalance = await lendingPool.getPoolBalance();
+            expect(poolBalance).to.equal(initialPoolBalance);
+
+            // Check lender1's balance in LendingPool
+            const lenderBalance = await lendingPool.totalSuppliedUsers(lender1.address);
+            expect(lenderBalance).to.equal(amountLending);
+
+            const lenBalAfter = await ethers.provider.getBalance(lender1Addr);
+            expect(lenderBalBefore).to.equal(lenBalAfter)
+        })
+    });
+
+    //TODO
+    // @ETest 11 - withdraw max amount
+    describe("withdraw zero amount", function () {
+
+        it("should not allow to withdraw zero amount", async function () {
+
+            //Lender 1 supplies 10 eth to the pool
+            const amountLending = parseEther("10");
+
+            await portal.connect(lender1).supply(amountLending, { value: amountLending });
+            await expect(
+                portal.connect(lender1).supply(amountLending, { value: amountLending })
+            ).to.emit(lendingPool, "Supplied").withArgs(lender1.address, amountLending);
+
+            const lenderBalBefore = await ethers.provider.getBalance(lender1Addr);
+            const amountWithdraw = parseEther("99999");
+
+            // Record initial pool balance
+            const initialPoolBalance = await lendingPool.getPoolBalance();
+
+            // lender1 withdraw ETH via portal
+            await expect(
+                portal.connect(lender1).withdraw(amountWithdraw)
+            ).to.revertedWith("[*ERROR*] Insufficient funds in pool!");
+
+            // Check pool balance
+            const poolBalance = await lendingPool.getPoolBalance();
+            expect(poolBalance).to.equal(initialPoolBalance);
+
+            // Check lender1's balance in LendingPool
+            const lenderBalance = await lendingPool.totalSuppliedUsers(lender1.address);
+            expect(lenderBalance).to.equal(amountLending);
+
+            const lenBalAfter = await ethers.provider.getBalance(lender1Addr);
+            expect(lenderBalBefore).to.equal(lenBalAfter)
+        })
+    });
+
+
 });
