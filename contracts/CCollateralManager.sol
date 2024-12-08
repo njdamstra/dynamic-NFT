@@ -148,7 +148,7 @@ contract CollateralManager is IERC721Receiver {
     }
 
     function addCollateral(address borrower, address collectionAddress, uint256 tokenId) public onlyPortal {
-        require(isNftValid(msg.sender, collectionAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
+        // require(isNftValid(msg.sender, collectionAddress, tokenId), "[*ERROR*] NFT collateral is invalid!");
         // check whether borrower already exists
         CollateralProfile storage collateralProfile = borrowersCollateral[borrower];
         uint256 length = collateralProfile.nftList.length;
@@ -177,7 +177,7 @@ contract CollateralManager is IERC721Receiver {
 
     function redeemCollateral(address borrower, address collectionAddress, uint256 tokenId) public onlyPortal {
         uint256 healthFactor = getHealthFactor(borrower);
-        require(isNftValid(borrower, collectionAddress,tokenId), "[*ERROR* Nft not valid]");
+        // require(isNftValid(borrower, collectionAddress,tokenId), "[*ERROR* Nft not valid]");
         require(healthFactor > 100,"[*ERROR*] Health Factor has to be above 1.5 to redeem collateral!");
 
         // get a new List without the redeemed Nft
