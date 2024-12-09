@@ -6,9 +6,8 @@ import requests
 
 
 # main function being called
-## collection = "gNft", "bNft" # token_id = 0, 1, 2, 3, 4 ... # iteration = 1,2,3,4,5 ...
+## collection address and token_id = 0, 1, 2, 3, 4 ... 
 def getNftPrice(collectionAddr, token_id):
-    # print(f"Received: collection={collection}, token_id={token_id}, iteration={iteration}")
     collection_data = getCollectionData(collectionAddr, token_id)
     sales_data = getSalesData(collectionAddr, token_id)
     # Prerequisite and security checks

@@ -1,13 +1,13 @@
 require("dotenv").config();
 const { ethers } = require("hardhat");
-const deployedAddresses = require("../mockScript/deployedAddresses.json");
-const wallets = require("../mockScript/signers.json"); // Load named wallets from signers.json
+const deployedAddresses = require("../scripts/mockScript/deployedAddresses.json");
+const wallets = require("../scripts/mockScript/signers.json"); // Load named wallets from signers.json
 
 
 
 // Load environment variables
 const CONTRACT_ADDRESS = deployedAddresses.NftValues;
-const nftValuesABI = require("../../artifacts/contracts/NftValues.sol/NftValues.json").abi;
+const nftValuesABI = require("../artifacts/contracts/NftValues.sol/NftValues.json").abi;
 
 // Setup provider and signer
 const provider = ethers.provider; // Use Hardhat's local provider

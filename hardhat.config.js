@@ -13,12 +13,12 @@ module.exports = {
       // loggingEnabled: true,
     },
     localhost: {
-      url: "http://127.0.0.1:8545" //local hardhat node
+      url: process.env.LOCAL_NODE_URL, //local hardhat node
     },
     // test network??
 
     sepolia: {
-      url: `https://sepolia.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
+      url: process.env.ALCHEMY_SEPOLIA_RPC_URL,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
     }
   },
