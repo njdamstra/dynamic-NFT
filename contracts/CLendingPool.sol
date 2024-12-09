@@ -285,6 +285,9 @@ contract LendingPool is ReentrancyGuard {
     // @Helper
     function calculateHealthFactor(uint256 debtValue, uint256 collateralValue) pure public returns (uint256) {
         if (debtValue == 0 && collateralValue > 0) return type(uint256).max; // Infinite health factor if no debt
+        if (debtValue == 0) {
+            debtValue = 1; // this avoids zero divison
+        }
         require(collateralValue <= type(uint256).max / 100, "[*ERROR*] Collateral value too high!");
         return (collateralValue * 75) / debtValue;
     }
