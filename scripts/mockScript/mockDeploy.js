@@ -5,6 +5,8 @@ const path = require("path");
 const signerData = require("./signers.json");
 
 async function main() {
+    // SET BOOLEAN (use mock oracle = true, use API oracle = false);
+    const useOnChainOracle = false;
     // Load named wallets
     const wallets = signerData.reduce((acc, signer) => {
         acc[signer.name] = new ethers.Wallet(signer.privateKey, ethers.provider);
@@ -98,7 +100,6 @@ async function main() {
     await mockOracle.connect(deployer).initialize();
     
     // Initialize NftValues
-    const useOnChainOracle = true;
     await nftValues.connect(deployer).initialize(useOnChainOracle);
 
     // Initialize CollateralManager
@@ -108,7 +109,7 @@ async function main() {
     await nftTrader.connect(deployer).initialize();
 
     // Initialize LendingPool
-    await lendingPool.connect(deployer).initialize();
+    await pool.connect(deployer).initialize();
 
     // Initialize UserPortal
     await portal.connect(deployer).initialize();

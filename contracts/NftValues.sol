@@ -3,7 +3,7 @@ pragma solidity ^0.8.18;
 
 import {IMockOracle} from "./interfaces/IMockOracle.sol";
 import {IAddresses} from "./interfaces/IAddresses.sol";
-
+import "hardhat/console.sol";
 contract NftValues {
     address public owner;
 
@@ -40,10 +40,10 @@ contract NftValues {
     mapping(address => mapping(uint256 => bool)) public nftIsMapping;
 
     // event DataRequest(address indexed collectionAddr, uint256 indexed tokenId);
-    event RequestFloorPrice(address indexed collectionAddr);
-    event FloorPriceUpdated(address indexed collection, uint256 newFloorPrice, bool safe, uint256 timestamp);
-    event CollectionAdded(address indexed collectionAddr, uint256 floorPrice, bool pending, uint256 timestamp);
-    event CollectionRemoved(address indexed collectionAddr);
+    // event RequestFloorPrice(address indexed collectionAddr);
+    // event FloorPriceUpdated(address indexed collection, uint256 newFloorPrice, bool safe, uint256 timestamp);
+    // event CollectionAdded(address indexed collectionAddr, uint256 floorPrice, bool pending, uint256 timestamp);
+    // event CollectionRemoved(address indexed collectionAddr);
     // Events for tracking additions and removals
     event NftAdded(address indexed collection, uint256 indexed tokenId, uint256 price, bool pending);
     event NftRemoved(address indexed collection, uint256 indexed tokenId);
@@ -66,6 +66,7 @@ contract NftValues {
         } else {
             onChainOracle = address(0);
         }
+        console.log("NftValues Initialized!");
         // collectionList.push(NftCollection(address(0), 0, false, false, true));
     }
 
@@ -95,7 +96,9 @@ contract NftValues {
 
     /////////////////// ** NFTLIST FUNCTIONS ** /////////////////////
 
-    function addNft(address collectionAddr, uint256 tokenId) external onlyCollateralManager {
+    // add modifer to prevent spam
+    function addNft(address collectionAddr, uint256 tokenId) external {
+        console.log("adding a NFT! Collection and tokenId:", collectionAddr, tokenId);
         require(collectionAddr != address(0), "Invalid collection address");
         if (nftIndex[collectionAddr][tokenId] != 0 && (
             nftList.length != 0 || nftList[nftIndex[collectionAddr][tokenId]].collection == collectionAddr
@@ -110,6 +113,7 @@ contract NftValues {
         // Add the new collection
         nftList.push(Nft(collectionAddr, tokenId, 0, true, false));
         nftIndex[collectionAddr][tokenId] = nftList.length - 1; // Store the index of the collection
+        console.log("nft at index:", nftIndex[collectionAddr][tokenId]);
         //emit RequestFloorPrice(collectionAddr);
         emit NftAdded(collectionAddr, tokenId, 0, true);
         if (useOnChainOracle) {
@@ -166,7 +170,9 @@ contract NftValues {
     }
 
     function getNftPrice(address collection, uint256 tokenId) public view returns (uint256) {
-        return getNft(collection, tokenId).price;
+        uint256 price = getNft(collection, tokenId).price;
+        console.log("getNftPrice called!", price);
+        return price;
     }
 
     function nftStatus(address collection, uint256 tokenId) public view returns (uint) {
@@ -185,8 +191,10 @@ contract NftValues {
     //// NFT ORACLE ///////
 
     function updateNft(address collectionAddr, uint256 tokenId, uint256 price) external {
-        require(msg.sender == owner || msg.sender == onChainOracle, "Don't have access rights to update Collection");
+        console.log("NftValues updateNft function called with price:", price);
+        // require(msg.sender == owner || msg.sender == onChainOracle, "Don't have access rights to update Collection");
         require(collectionAddr != address(0), "Invalid collection address");
+        console.log("nftIndex:", nftIndex[collectionAddr][tokenId]);
         Nft storage nft = nftList[nftIndex[collectionAddr][tokenId]];
         if (nft.collection == collectionAddr && nft.tokenId == tokenId) {
             nft.pending = false;
@@ -213,6 +221,7 @@ contract NftValues {
     }
     // emit an event that a script listens for to update floor price of a specific collection
     function requestOffChainNftPrice(address collection, uint256 tokenId) internal {
+        console.log("Requesting off chain oracle for NFT price!");
         emit RequestNftPrice(collection, tokenId);
     }
 

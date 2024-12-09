@@ -7,10 +7,10 @@ import requests
 
 # main function being called
 ## collection = "gNft", "bNft" # token_id = 0, 1, 2, 3, 4 ... # iteration = 1,2,3,4,5 ...
-def getNftPrice(collection_name, token_id, iteration):
+def getNftPrice(collectionAddr, token_id):
     # print(f"Received: collection={collection}, token_id={token_id}, iteration={iteration}")
-    collection_data = getGeneralJsonFile(collection_name, token_id, iteration)
-    sales_data = getSalesJsonFile(collection_name, token_id)
+    collection_data = getCollectionData(collectionAddr, token_id)
+    sales_data = getSalesData(collectionAddr, token_id)
     # Prerequisite and security checks
     if not canAcceptNFT(sales_data, collection_data):
         return 0
@@ -99,29 +99,50 @@ def onlyUseFloorPrice(sales_data, collection_data):
     return False
 
 
-def getGeneralJsonFile(collection, token_id, iteration):
-    file_path = f"scripts/mockOracles/data/{collection}/{collection}_general_{iteration}.json"
+def getCollectionData(contract_address, token_id):
+    """
+    Fetch NFT collection data from the SimpleHash API.
+    :param contract_address: Contract address of the NFT collection.
+    :param token_id: Token ID of the NFT.
+    :return: Dictionary containing the collection data.
+    """
+    url = f"https://api.simplehash.com/api/v0/nfts/ethereum/{contract_address}/{token_id}?include_attribute_percentages=1"
+    headers = {
+        "accept": "application/json",
+        "X-API-KEY": "njdamstra_sk_jp41yytvsxataw16ayo6i9x22zaebw4d"
+    }
     try:
-        with open(file_path, "r") as file:
-            return json.load(file)
-    except FileNotFoundError:
-        print(f"File not found: {file_path}")
-        return {}
-    except json.JSONDecodeError:
-        print(f"Invalid JSON in file: {file_path}")
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Failed to fetch collection data: {response.status_code} - {response.text}")
+            return {}
+    except Exception as e:
+        print(f"Error fetching collection data: {e}")
         return {}
 
-def getSalesJsonFile(collection, token_id):
-    """Load the sales data JSON file."""
-    file_path = f"scripts/mockOracles/data/{collection}/{collection}_{token_id}_sales.json"
+def getSalesData(contract_address, token_id):
+    """
+    Fetch NFT sales data from the SimpleHash API.
+    :param contract_address: Contract address of the NFT collection.
+    :param token_id: Token ID of the NFT.
+    :return: Dictionary containing the sales data.
+    """
+    url = f"https://api.simplehash.com/api/v0/nfts/transfers/ethereum/{contract_address}/{token_id}?include_nft_details=0&only_sales=1&order_by=timestamp_desc&limit=50"
+    headers = {
+        "accept": "application/json",
+        "X-API-KEY": "njdamstra_sk_jp41yytvsxataw16ayo6i9x22zaebw4d"
+    }
     try:
-        with open(file_path, "r") as file:
-            return json.load(file)
-    except FileNotFoundError:
-        print(f"File not found: {file_path}")
-        return {}
-    except json.JSONDecodeError:
-        print(f"Invalid JSON in file: {file_path}")
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Failed to fetch sales data: {response.status_code} - {response.text}")
+            return {}
+    except Exception as e:
+        print(f"Error fetching sales data: {e}")
         return {}
 
 
@@ -273,20 +294,15 @@ def get_eth_price_at_timestamp(timestamp):
         return None
 
 def main():
-    if len(sys.argv) != 4:
-        print("Usage: python get_nft_price.py <collection_address> <token_id> <iteration>")
+    if len(sys.argv) != 3:
+        print("Usage: python get_nft_price.py <collection_address> <token_id>")
         sys.exit(1)
 
     collection = sys.argv[1]
     token_id = sys.argv[2]
-    iteration = sys.argv[3]
     # print(f"Received: collection={collection}, token_id={token_id}, iteration={iteration}")
-    price = getNftPrice(collection, token_id, iteration)
+    price = getNftPrice(collection, token_id)
     print(price)
 
 if __name__ == "__main__":
     main()
-        
-            
-
-

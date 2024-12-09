@@ -7,7 +7,7 @@ const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 
 function getNftPrice(collection, tokenId, iteration) {
     try {
-        const result = execSync(`python3 scripts/mockOracles/get_nft_price.py ${collection} ${tokenId} ${iteration}`);
+        const result = execSync(`python3 scripts/mockOracles/mockGet_nft_price.py ${collection} ${tokenId} ${iteration}`);
         const output = result.toString().trim();
         console.log("python output:", output);
         return parseFloat(output);

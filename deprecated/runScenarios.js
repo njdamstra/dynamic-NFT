@@ -1,9 +1,9 @@
 require("dotenv").config();
 const { ethers } = require("hardhat");
 const { execSync } = require("child_process");
-const deployedAddresses = require("./deployedAddresses.json");
+const deployedAddresses = require("../scripts/mockScript/deployedAddresses.json");
 const path = require("path");
-const { loadWallets } = require("./loadWallets");
+const { loadWallets } = require("../scripts/mockScript/loadWallets");
 
 async function main() {
     const wallets = loadWallets();

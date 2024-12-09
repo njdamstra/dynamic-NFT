@@ -1,6 +1,6 @@
 const { ethers } = require("hardhat");
-const { loadWallets } = require("./loadWallets");
-const deployedAddresses = require("./deployedAddresses.json");
+const { loadWallets } = require("../scripts/mockScript/loadWallets");
+const deployedAddresses = require("../scripts/mockScript/deployedAddresses.json");
 const { execSync } = require("child_process");
 
 async function main() {
