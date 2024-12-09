@@ -137,9 +137,9 @@ describe("UserPortal", function () {
         }
     });
 
-    describe("[Scenario 1] Volatility", function () {
+    describe("[@SCENARIO] NFT Price Volatility", function () {
 
-        it("", async function () {
+        beforeEach("[BEFORE EACH]", async function () {
             // supply 1000 to pool
             const amountLending = parseEther("1000");
             await portal.connect(lender1).supply(amountLending, { value: amountLending });
@@ -148,9 +148,14 @@ describe("UserPortal", function () {
 
             // add bNft as collateral
             await bNft.connect(borrower1).setApprovalForAll(portalAddr, true);
-            portal.connect(borrower1).addCollateral(bNftAddr, 0)
+
+            await expect(portal.connect(borrower1).addCollateral(bNftAddr, 0)
+            ).to.emit(collateralManager, "CollateralAdded").withArgs(borrower1Addr, bNftAddr, 0, anyValue,anyValue
+            ).and.to.emit(nftValues, "NftAdded").withArgs(bNftAddr,0, 0, true)
+                .and.to.emit(mockOracle, "RequestFromNftValues").withArgs(bNftAddr, 0);
+
             const nftOwner = await bNft.ownerOf(0);
-            expect(nftOwner).to.equal(portalAddr);
+            expect(nftOwner).to.equal(collateralManagerAddr);
 
             // borrow 10 eth
             const amountBorrowed = parseEther("10");
@@ -158,35 +163,116 @@ describe("UserPortal", function () {
             ).to.emit(lendingPool, "Borrowed").withArgs(borrower1Addr, amountBorrowed);
 
             //account data 1
-            let borrowerAccountData = portal.connect(borrower1).getBorrowerAccountData()
-            const [totalDebt, netDebt, collateralValue, healthFactor, periodicalInterest, lastUpdated, periodDuration
-            ] = borrowerAccountData;
+            let [totalDebt, netDebt, totalSupplied, collateralValue, healthFactor] = await lendingPool.connect(borrower1).getUserAccountData(borrower1Addr);
+            console.log("[Test] Account data 1:");
 
-            expect(totalDebt).to.equal((amountBorrowed * 10) / 100);
+            expect(totalDebt).to.equal(ethers.parseEther("11"));
+            //console.log("totalDebt: ", totalDebt);
             expect(netDebt).to.equal((amountBorrowed));
-            console.log("collateralValue", collateralValue.toString());
-            console.log("healthFactor", healthFactor.toString());
-            expect(periodicalInterest).to.equal(2)
+            //console.log("netDebt: ",netDebt)
+            expect(collateralValue).to.equal(ethers.parseEther("20"));
+            //console.log("collateralValue", collateralValue);
+
+            console.log("healthFactor", healthFactor);
+        });
+        it("[TEST] Price drop nft - 10% -> 20 eth to 18 eth", async function () {
 
             //price drop nft - 10% -> 20 to 18
             bNftFP = parseEther("18"); // 15 ETH floor price
             console.log("Setting price for BadNft token 0 to:.", bNftFP.toString());
             const BNft_safe = true; // Collection is safe for borrowing
-            await mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 0, bNftFP);
+            await expect(
+                mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 0, bNftFP)
+            ).to.emit(mockOracle, "UpdateNft").withArgs(bNftAddr, 0, bNftFP);
+
+            await expect(
+                mockOracle.updateAllFloorPrices()
+            ).to.emit(mockOracle, "SentUpdateToNftValues").withArgs(bNftAddr, 0, bNftFP
+            ).to.emit(nftValues, "NftPriceUpdated").withArgs(bNftAddr, 0, bNftFP, anyValue);
+
+            const floorPriceAfter = await collateralManager.getNftValue(bNftAddr, 0);
+            expect(bNftFP).to.equal(floorPriceAfter);
 
             //account data 2
-            borrowerAccountData = portal.connect(borrower1).getBorrowerAccountData();
-            [totalDebt, netDebt, collateralValue, healthFactor, periodicalInterest, lastUpdated, periodDuration] = borrowerAccountData;
+            [totalDebt, netDebt, totalSupplied, collateralValue, healthFactor] = await lendingPool.connect(borrower1).getUserAccountData(borrower1Addr);
+            console.log("[Test] Account data 2:");
 
-            expect(totalDebt).to.equal((amountBorrowed * 10) / 100);
-            expect(netDebt).to.equal((amountBorrowed));
-            console.log("collateralValue", collateralValue.toString());
-            console.log("healthFactor", healthFactor.toString());
-            expect(periodicalInterest).to.equal(2)
+            expect(totalDebt).to.equal(ethers.parseEther("11"));
+            //console.log("totalDebt: ", totalDebt);
+            expect(netDebt).to.equal(ethers.parseEther("10"));
+            //console.log("netDebt: ",netDebt)
+            expect(collateralValue).to.equal(ethers.parseEther("18"));
+            //console.log("collateralValue", collateralValue);
 
-            //
+            console.log("healthFactor", healthFactor);
 
         });
+        it("[TEST] Price drop nft - 40% -> 20 eth to 12 eth", async function () {
+
+            bNftFP = parseEther("12"); // 12 ETH floor price
+            console.log("Setting price for BadNft token 0 to:.", bNftFP.toString());
+            const BNft_safe = true; // Collection is safe for borrowing
+            await expect(
+                mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 0, bNftFP)
+            ).to.emit(mockOracle, "UpdateNft").withArgs(bNftAddr, 0, bNftFP);
+
+            await expect(
+                mockOracle.updateAllFloorPrices()
+            ).to.emit(mockOracle, "SentUpdateToNftValues").withArgs(bNftAddr, 0, bNftFP
+            ).to.emit(nftValues, "NftPriceUpdated").withArgs(bNftAddr, 0, bNftFP, anyValue);
+
+            const floorPriceAfter = await collateralManager.getNftValue(bNftAddr, 0);
+            expect(bNftFP).to.equal(floorPriceAfter);
+
+            //account data 2
+            [totalDebt, netDebt, totalSupplied, collateralValue, healthFactor] = await lendingPool.connect(borrower1).getUserAccountData(borrower1Addr);
+            console.log("[Test] Account data 2:");
+
+            expect(totalDebt).to.equal(ethers.parseEther("11"));
+            //console.log("totalDebt: ", totalDebt);
+            expect(netDebt).to.equal(ethers.parseEther("10"));
+            //console.log("netDebt: ",netDebt)
+            expect(collateralValue).to.equal(ethers.parseEther("12"));
+            //console.log("collateralValue", collateralValue);
+
+            console.log("healthFactor", healthFactor);
+
+        });
+        it("[TEST] Price rise nft + 40% -> 20 eth to 28 eth", async function () {
+
+            bNftFP = parseEther("28"); // ETH floor price
+            console.log("Setting price for BadNft token 0 to:.", bNftFP.toString());
+            const BNft_safe = true; // Collection is safe for borrowing
+            await expect(
+                mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 0, bNftFP)
+            ).to.emit(mockOracle, "UpdateNft").withArgs(bNftAddr, 0, bNftFP);
+
+            await expect(
+                mockOracle.updateAllFloorPrices()
+            ).to.emit(mockOracle, "SentUpdateToNftValues").withArgs(bNftAddr, 0, bNftFP
+            ).to.emit(nftValues, "NftPriceUpdated").withArgs(bNftAddr, 0, bNftFP, anyValue);
+
+            const floorPriceAfter = await collateralManager.getNftValue(bNftAddr, 0);
+            expect(bNftFP).to.equal(floorPriceAfter);
+
+            //account data 2
+            [totalDebt, netDebt, totalSupplied, collateralValue, healthFactor] = await lendingPool.connect(borrower1).getUserAccountData(borrower1Addr);
+            console.log("[Test] Account data 2:");
+
+            expect(totalDebt).to.equal(ethers.parseEther("11"));
+            //console.log("totalDebt: ", totalDebt);
+            expect(netDebt).to.equal(ethers.parseEther("10"));
+            //console.log("netDebt: ",netDebt)
+            expect(collateralValue).to.equal(ethers.parseEther("28"));
+            //console.log("collateralValue", collateralValue)
+
+            console.log("healthFactor", healthFactor);
+
+        });
+    });
+    describe("[@SCENARIO] NFT Liquidation", function () {
+
+
     });
 
 });
