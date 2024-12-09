@@ -362,14 +362,14 @@ contract CollateralManager is IERC721Receiver {
 
     function getNFTsToLiquidate(address borrower) public view returns (Nft[] memory nftsToLiquidate, Nft[] memory nftsNotToLiquidate) {
         uint256 totalDebt = iLendingPool.getTotalBorrowedUsers(borrower);
-        console.log("initial Total debt: %s", totalDebt);
+        //console.log("initial Total debt: %s", totalDebt);
         Nft[] memory nftList = getNftList(borrower);
         uint256 nftCount = nftList.length;
-        console.log("nftCount: %s", nftCount);
+        //console.log("nftCount: %s", nftCount);
         uint256 collateralValue = getListValue(nftList);
-        console.log("initial total collateralValue: %s", collateralValue);
+        //console.log("initial total collateralValue: %s", collateralValue);
         uint256 healthFactor = calculateHealthFactor(totalDebt, collateralValue);
-        console.log("initial health factor: %s", healthFactor);
+        //console.log("initial health factor: %s", healthFactor);
         // If health factor is already >= 120, no need to liquidate
         if (healthFactor >= 100) {
             Nft[] memory emptyNft = new Nft[](0);
