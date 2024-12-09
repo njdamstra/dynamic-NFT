@@ -137,7 +137,7 @@ describe("UserPortal", function () {
         }
     });
 
-    describe("[@SCENARIO] NFT Price Volatility", function () {
+    describe("[@SCENARIO 1] NFT Price Volatility", function () {
 
         beforeEach("[BEFORE EACH]", async function () {
             // supply 1000 to pool
@@ -157,13 +157,23 @@ describe("UserPortal", function () {
             const nftOwner = await bNft.ownerOf(0);
             expect(nftOwner).to.equal(collateralManagerAddr);
 
+            let [totalDebt, netDebt, totalSupplied, collateralValue, healthFactor] = await lendingPool.connect(borrower1).getUserAccountData(borrower1Addr);
+
+            expect(totalDebt).to.equal(ethers.parseEther("0"));
+            //console.log("totalDebt: ", totalDebt);
+            expect(netDebt).to.equal(ethers.parseEther("0"));
+            //console.log("netDebt: ",netDebt)
+            expect(collateralValue).to.equal(ethers.parseEther("20"));
+            //console.log("collateralValue", collateralValue);
+            expect(healthFactor).to.greaterThan(150);
+
             // borrow 10 eth
             const amountBorrowed = parseEther("10");
             await expect(portal.connect(borrower1).borrow(amountBorrowed)
             ).to.emit(lendingPool, "Borrowed").withArgs(borrower1Addr, amountBorrowed);
 
             //account data 1
-            let [totalDebt, netDebt, totalSupplied, collateralValue, healthFactor] = await lendingPool.connect(borrower1).getUserAccountData(borrower1Addr);
+            [totalDebt, netDebt, totalSupplied, collateralValue, healthFactor] = await lendingPool.connect(borrower1).getUserAccountData(borrower1Addr);
             console.log("[Test] Account data 1:");
 
             expect(totalDebt).to.equal(ethers.parseEther("11"));
@@ -203,12 +213,11 @@ describe("UserPortal", function () {
             //console.log("netDebt: ",netDebt)
             expect(collateralValue).to.equal(ethers.parseEther("18"));
             //console.log("collateralValue", collateralValue);
-
+            expect(healthFactor).to.greaterThanOrEqual(120);
             console.log("healthFactor", healthFactor);
 
         });
         it("[TEST] Price drop nft - 40% -> 20 eth to 12 eth", async function () {
-
             bNftFP = parseEther("12"); // 12 ETH floor price
             console.log("Setting price for BadNft token 0 to:.", bNftFP.toString());
             const BNft_safe = true; // Collection is safe for borrowing
@@ -234,7 +243,7 @@ describe("UserPortal", function () {
             //console.log("netDebt: ",netDebt)
             expect(collateralValue).to.equal(ethers.parseEther("12"));
             //console.log("collateralValue", collateralValue);
-
+            expect(healthFactor).to.lessThan(120);
             console.log("healthFactor", healthFactor);
 
         });
@@ -265,14 +274,90 @@ describe("UserPortal", function () {
             //console.log("netDebt: ",netDebt)
             expect(collateralValue).to.equal(ethers.parseEther("28"));
             //console.log("collateralValue", collateralValue)
-
+            expect(healthFactor).to.greaterThan(150);
             console.log("healthFactor", healthFactor);
 
         });
     });
-    describe("[@SCENARIO] NFT Liquidation", function () {
+    describe("[@SCENARIO 2] NFT Liquidation", function () {
+        beforeEach("[BEFORE EACH]", async function () {
+            // supply 1000 to pool
+            const amountLending = parseEther("1000");
+            await portal.connect(lender1).supply(amountLending, { value: amountLending });
+            await expect(portal.connect(lender1).supply(amountLending, { value: amountLending })
+            ).to.emit(lendingPool, "Supplied").withArgs(lender1.address, amountLending);
+
+            // add bNft as collateral
+            await bNft.connect(borrower1).setApprovalForAll(portalAddr, true);
+
+            await expect(portal.connect(borrower1).addCollateral(bNftAddr, 0)
+            ).to.emit(collateralManager, "CollateralAdded").withArgs(borrower1Addr, bNftAddr, 0, anyValue,anyValue
+            ).and.to.emit(nftValues, "NftAdded").withArgs(bNftAddr,0, 0, true)
+                .and.to.emit(mockOracle, "RequestFromNftValues").withArgs(bNftAddr, 0);
+
+            const nftOwner = await bNft.ownerOf(0);
+            expect(nftOwner).to.equal(collateralManagerAddr);
+
+            let [totalDebt, netDebt, totalSupplied, collateralValue, healthFactor] = await lendingPool.connect(borrower1).getUserAccountData(borrower1Addr);
+
+            expect(totalDebt).to.equal(ethers.parseEther("0"));
+            //console.log("totalDebt: ", totalDebt);
+            expect(netDebt).to.equal(ethers.parseEther("0"));
+            //console.log("netDebt: ",netDebt)
+            expect(collateralValue).to.equal(ethers.parseEther("20"));
+            //console.log("collateralValue", collateralValue);
+            expect(healthFactor).to.greaterThan(150);
+
+            // borrow 10 eth
+            const amountBorrowed = parseEther("10");
+            await expect(portal.connect(borrower1).borrow(amountBorrowed)
+            ).to.emit(lendingPool, "Borrowed").withArgs(borrower1Addr, amountBorrowed);
+
+            //account data 1
+            [totalDebt, netDebt, totalSupplied, collateralValue, healthFactor] = await lendingPool.connect(borrower1).getUserAccountData(borrower1Addr);
+            //console.log("[Test] Account data 1:");
+
+            expect(totalDebt).to.equal(ethers.parseEther("11"));
+            //console.log("totalDebt: ", totalDebt);
+            expect(netDebt).to.equal((amountBorrowed));
+            //console.log("netDebt: ",netDebt)
+            expect(collateralValue).to.equal(ethers.parseEther("20"));
+            //console.log("collateralValue", collateralValue);
+            //console.log("healthFactor", healthFactor);
+
+            bNftFP = parseEther("12"); // 12 ETH floor price
+            console.log("Setting price for BadNft token 0 to:.", bNftFP.toString());
+            const BNft_safe = true; // Collection is safe for borrowing
+            await expect(
+                mockOracle.connect(deployer).manualUpdateNftPrice(bNftAddr, 0, bNftFP)
+            ).to.emit(mockOracle, "UpdateNft").withArgs(bNftAddr, 0, bNftFP);
+
+            await expect(
+                mockOracle.updateAllFloorPrices()
+            ).to.emit(mockOracle, "SentUpdateToNftValues").withArgs(bNftAddr, 0, bNftFP
+            ).to.emit(nftValues, "NftPriceUpdated").withArgs(bNftAddr, 0, bNftFP, anyValue);
+
+            const floorPriceAfter = await collateralManager.getNftValue(bNftAddr, 0);
+            expect(bNftFP).to.equal(floorPriceAfter);
+
+            //account data 2
+            [totalDebt, netDebt, totalSupplied, collateralValue, healthFactor] = await lendingPool.connect(borrower1).getUserAccountData(borrower1Addr);
+            console.log("[Test] Account data 2:");
+
+            expect(totalDebt).to.equal(ethers.parseEther("11"));
+            //console.log("totalDebt: ", totalDebt);
+            expect(netDebt).to.equal(ethers.parseEther("10"));
+            //console.log("netDebt: ",netDebt)
+            expect(collateralValue).to.equal(ethers.parseEther("12"));
+            //console.log("collateralValue", collateralValue);
+            expect(healthFactor).to.lessThan(120);
+            //console.log("healthFactor", healthFactor);
+        });
+        it("[TEST] Check whether NFT was listed for collateralization.", async function () {
+
+        });
 
 
-    });
+        });
 
 });
