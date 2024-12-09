@@ -157,7 +157,7 @@ describe("UserPortal", function () {
             // function call should be reverted
             await expect(
                 portal.connect(borrower1).borrow(amountBorrowing)
-            ).to.be.revertedWith("[*ERROR*] Health factor too low to borrow more money!");
+            ).to.be.revertedWith("[*ERROR*] New health factor too low to borrow more money!");
 
             console.log("[@1.2] Checking borrowers balance before and after");
             const borrower1BalanceAfter = await ethers.provider.getBalance(borrower1Addr);
@@ -221,7 +221,7 @@ describe("UserPortal", function () {
             // function call should be reverted
             await expect(
                 portal.connect(borrower1).borrow(amountBorrowing)
-            ).to.be.revertedWith("[*ERROR*] Health factor too low to borrow more money!");
+            ).to.be.revertedWith("[*ERROR*] New health factor too low to borrow more money!");
 
             console.log("[@2.2] Checking borrowers balance before and after");
             const borrower1BalanceAfter = await ethers.provider.getBalance(borrower1Addr);
@@ -404,7 +404,7 @@ describe("UserPortal", function () {
             // borrower1 adds NFT as collateral via portal
             await expect(
                 portal.connect(borrower1).addCollateral(gNftAddr, 1)
-            ).to.be.revertedWith("[*ERROR*] NFT collateral is invalid!");
+            ).to.be.revertedWith("User is not the owner of this Nft");
 
             // Verify that the NFT is not owned by the CollateralManager
             const nftOwner = await gNft.ownerOf(1);
@@ -436,7 +436,7 @@ describe("UserPortal", function () {
             console.log("[@6] Starting Test")
             await expect(
                 portal.connect(borrower2).redeemCollateral(gNftAddr, 0)
-            ).to.be.revertedWith("[*ERROR* Nft not valid]");
+            ).to.be.revertedWith("NFT not found in collateral profile.");
 
             // Verify that the NFT is still owned by borrower2
             const nftOwner = await gNft.ownerOf(0);
@@ -464,7 +464,7 @@ describe("UserPortal", function () {
             // lender1 supplies ETH via portal
             await expect(
                 portal.connect(lender1).supply(amountLending, { value: amountLending })
-            ).to.revertedWith("[*ERROR*] supply: Cannot supply zero ETH!");
+            ).to.revertedWith("[*ERROR*] msg.value: Cannot send 0 WEI");
 
             // Check pool balance
             const poolBalance = await lendingPool.getPoolBalance();
