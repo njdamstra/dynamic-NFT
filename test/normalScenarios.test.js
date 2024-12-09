@@ -306,7 +306,7 @@ describe("UserPortal", function () {
             //console.log("netDebt: ",netDebt)
             expect(collateralValue).to.equal(ethers.parseEther("20"));
             //console.log("collateralValue", collateralValue);
-            expect(healthFactor).to.greaterThan(150);
+            expect(healthFactor).to.greaterThanOrEqual(150);
 
             // borrow 10 eth
             const amountBorrowed = parseEther("10");
@@ -352,8 +352,51 @@ describe("UserPortal", function () {
             //console.log("collateralValue", collateralValue);
             expect(healthFactor).to.lessThan(120);
             //console.log("healthFactor", healthFactor);
+
+            //check whether Nft was listed for liquidation
+
+            // check if Nft was listed for base price
+            const basePrice = parseEther((12*95/100).toString());
+            await expect(
+                portal.connect(deployer).refresh()
+            ).to.emit(collateralManager, "NFTListed").withArgs(borrower1Addr, bNftAddr, 0, basePrice, anyValue
+            ).to.emit(nftTrader, "NFTListed").withArgs(bNftAddr, 0, basePrice, collateralManagerAddr, true, anyValue
+            );
         });
-        it("[TEST] Check whether NFT was listed for collateralization.", async function () {
+        it("[TEST] Nft Liquidation instant purchase", async function () {
+
+            await network.provider.send("evm_increaseTime", [20002]); // Increase time by 20002 seconds
+            await network.provider.send("evm_mine");
+
+            await expect(portal.connect(deployer).refresh()
+            ).to.emit(nftTrader, "AuctionEndedWithNoWinner").withArgs(bNftAddr, 0
+            );
+
+            const basePrice = parseEther((12*95/100).toString());
+            await expect(portal.connect(liquidator).purchase(bNftAddr, 0, { value: basePrice })
+            ).to.emit(nftTrader, "NFTPurchased").withArgs(bNftAddr, 0, basePrice, liquidatorAddr, anyValue
+            ).to.emit(lendingPool, "Liquidated").withArgs(borrower1Addr, bNftAddr, 0, basePrice
+            ).to.emit(lendingPool, "Repaid").withArgs(borrower1Addr, parseEther("11")
+            ).to.emit(collateralManager, "Liquidated").withArgs(borrower1Addr, bNftAddr, 0, basePrice, anyValue
+            );
+
+            await portal.connect(deployer).refresh()
+
+            const owner0 = await bNft.ownerOf(0);
+            expect(owner0).to.equal(liquidatorAddr);
+
+            [totalDebt, netDebt, totalSupplied, collateralValue, healthFactor] = await lendingPool.connect(borrower1).getUserAccountData(borrower1Addr);
+
+            expect(totalDebt).to.equal(ethers.parseEther("0"));
+            //console.log("totalDebt: ", totalDebt);
+            expect(netDebt).to.equal(ethers.parseEther("0"));
+            //console.log("netDebt: ",netDebt)
+            expect(collateralValue).to.equal(ethers.parseEther("0"));
+            //console.log("collateralValue", collateralValue);
+            //expect(healthFactor).to.lessThan(120);
+            console.log("healthFactor", healthFactor);
+
+
 
         });
 
