@@ -1,7 +1,8 @@
 import json
 import sys
 from statistics import mean
-from datetime import datetime
+from datetime import datetime, timezone
+import requests
 
 
 # main function being called
@@ -14,9 +15,9 @@ def getNftPrice(collection_name, token_id, iteration):
     if not canAcceptNFT(sales_data, collection_data):
         return 0
 
-    floor_price = getFloorPrice(general_data)
+    floor_price = getFloorPrice(collection_data)
 
-    if onlyUseFloorPrice(sales_date, collection_data):
+    if onlyUseFloorPrice(sales_data, collection_data):
         return floor_price
 
     # Extract relevant pricing data
@@ -24,7 +25,7 @@ def getNftPrice(collection_name, token_id, iteration):
     avg_sales_price = getNftSalesPrice(sales_data)
 
     # Combine prices to determine fair price
-    prices = [price for price in [floor_price, avg_sales_price] if price > 0]
+    prices = [price for price in [floor_price, floor_price, avg_sales_price] if price > 0]
     
     if not prices:
         return 0  # No valid price data
@@ -40,7 +41,7 @@ def getNftPrice(collection_name, token_id, iteration):
 def canAcceptNFT(sales_data, collection_data):
     """Determine if the NFT is acceptable."""
     try:
-        if not collection_data["chain"] == "ethereum" and not colleciton_data["contract"]["type"] == "ERC721":
+        if not collection_data["chain"] == "ethereum" or not collection_data["contract"]["type"] == "ERC721":
             return False
 
         # Check if the collection is verified on at least one legitimate marketplace
@@ -134,59 +135,6 @@ def getFloorPrice(data):
     ]
     return mean(eth_prices) if eth_prices else 0
 
-def getNftSalesPrice(data):
-    """Calculate the average sales price from the transfer history, excluding outliers."""
-    transfers = data.get("transfers", [])
-    
-    # Extract ETH prices from the transfers
-    eth_prices = [
-        transfer["sale_details"]["unit_price"]
-        for transfer in transfers
-        if transfer["event_type"] == "sale"
-        and not transfer["sale_details"]["is_bundle_sale"]
-        and transfer["sale_details"]["payment_token"]["symbol"] == "ETH"
-    ]
-    
-    if not eth_prices:
-        return 0  # No valid prices found
-    
-    # Calculate the interquartile range (IQR)
-    eth_prices = [sale[0] for sale in eth_sales]
-    eth_prices.sort()
-    q1 = eth_prices[len(eth_prices) // 4]  # First quartile
-    q3 = eth_prices[3 * len(eth_prices) // 4]  # Third quartile
-    iqr = q3 - q1
-
-    # Define acceptable range
-    lower_bound = q1 - 1.5 * iqr
-    upper_bound = q3 + 1.5 * iqr
-
-    # Filter out outliers
-    filtered_sales = [(price, timestamp) for price, timestamp in eth_sales if lower_bound <= price <= upper_bound]
-
-    if not filtered_sales:
-        return 0  # No valid prices after filtering
-
-    # Calculate time weights
-    now = datetime.utcnow()
-    weighted_prices = []
-    weights = []
-    
-    for price, timestamp in filtered_sales:
-        # Parse the timestamp into a datetime object
-        sale_time = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")
-        time_diff = (now - sale_time).total_seconds() / (60 * 60 * 24)  # Difference in days
-
-        # Assign a weight inversely proportional to the age of the sale
-        weight = 1 / (1 + time_diff)  # More recent sales have higher weights
-        weighted_prices.append(price * weight)
-        weights.append(weight)
-
-    # Compute the time-weighted average price
-    time_weighted_avg = sum(weighted_prices) / sum(weights) if weights else 0
-
-    return time_weighted_avg
-
 def getNumberOfSales(data):
     """Calculate the number of sales for the NFT from the transfer history."""
     transfers = data.get("transfers", [])
@@ -201,6 +149,128 @@ def getNumberOfSales(data):
     
     # Return the count of sales events
     return len(sales_events)
+
+def getNftSalesPrice(data):
+    """Calculate the average sales price in WEI from the transfer history, accounting for price fluctuations."""
+    transfers = data.get("transfers", [])
+    
+    # Extract USD prices from the transfers
+    usd_sales = [
+        (transfer["sale_details"]["unit_price_usd_cents"] / 100, transfer["timestamp"])
+        for transfer in transfers
+        if transfer["event_type"] == "sale"
+        and not transfer["sale_details"]["is_bundle_sale"]
+        and "unit_price_usd_cents" in transfer["sale_details"]  # Ensure field exists
+    ]
+    
+    if not usd_sales:
+        return 0  # No valid prices found
+    
+    # Calculate the interquartile range (IQR)
+    usd_prices = [sale[0] for sale in usd_sales]
+    usd_prices.sort()
+    q1 = usd_prices[len(usd_prices) // 4]  # First quartile
+    q3 = usd_prices[3 * len(usd_prices) // 4]  # Third quartile
+    iqr = q3 - q1
+
+    # Define acceptable range
+    lower_bound = q1 - 1.5 * iqr
+    upper_bound = q3 + 1.5 * iqr
+
+    # Filter out outliers
+    filtered_sales = [(price, timestamp) for price, timestamp in usd_sales if lower_bound <= price <= upper_bound]
+
+    if not filtered_sales:
+        return 0  # No valid prices after filtering
+
+    # Calculate time weights
+    now = datetime.now(timezone.utc)
+    weighted_prices = []
+    weights = []
+    
+    for price, timestamp in filtered_sales:
+        # Parse the timestamp into a datetime object
+        sale_time = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        time_diff = (now - sale_time).total_seconds() / (60 * 60 * 24)  # Difference in days
+
+        # Assign a weight inversely proportional to the age of the sale
+        weight = 1 / (1 + time_diff)  # More recent sales have higher weights
+        weighted_prices.append(price * weight)
+        weights.append(weight)
+
+    # Compute the time-weighted average price in USD
+    time_weighted_avg_usd = sum(weighted_prices) / sum(weights) if weights else 0
+
+    # Convert the USD price to WEI using the current ETH price
+    current_eth_price = get_current_eth_price()
+    if current_eth_price is None:
+        print("Failed to fetch current ETH price. Returning 0.")
+        return 0
+
+    # Convert back to WEI (1 ETH = 10^18 WEI)
+    time_weighted_avg_wei = (time_weighted_avg_usd / current_eth_price) * (10**18)
+    time_weighted_avg_wei = int(time_weighted_avg_wei)  # Convert to integer for WEI
+
+    return time_weighted_avg_wei
+
+def get_current_eth_price():
+    """Fetch the current ETH price in USD using the CoinGecko API."""
+    try:
+        url = "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd"
+        headers = {
+            "accept": "application/json",
+            "x-cg-demo-api-key": "CG-97iQsZ8UbpDEiTNYWbHPcNzf"
+        }
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            data = response.json()
+            return data["ethereum"]["usd"]
+        else:
+            print(f"Failed to fetch current ETH price: {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"Error fetching current ETH price: {e}")
+        return None
+
+def get_eth_price_at_timestamp(timestamp):
+    """
+    Fetch the historical price of ETH in USD at a given timestamp.
+    :param timestamp: Unix timestamp of the sale (in seconds).
+    :return: Price of ETH in USD at that time, or None if not found.
+    """
+    try:
+        # Convert ISO 8601 timestamp to datetime object
+        if isinstance(timestamp, str):
+            sale_time = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")
+        else:
+            raise ValueError(f"Invalid timestamp format: {timestamp}")
+
+        # Convert to Unix timestamp in seconds
+        unix_timestamp = int(sale_time.replace(tzinfo=timezone.utc).timestamp())
+
+        # Convert timestamp to date string (CoinGecko format: 'dd-mm-yyyy')
+        date_str = sale_time.strftime('%d-%m-%Y')
+        # Query CoinGecko API for historical price
+        url = f"https://api.coingecko.com/api/v3/coins/ethereum/history?date={date_str}"
+        headers = {
+            "accept": "application/json",
+            "x-cg-demo-api-key": "CG-97iQsZ8UbpDEiTNYWbHPcNzf"
+        }
+        response = requests.get(url, headers=headers)
+
+        # Check if response is valid
+        if response.status_code == 200:
+            data = response.json()
+            return data["market_data"]["current_price"]["usd"]
+        else:
+            print(f"Failed to fetch price data: {response.status_code} for {date_str}")
+            return None
+    except ValueError as ve:
+        print(f"Invalid timestamp value: {ve}")
+        return None
+    except Exception as e:
+        print(f"Error fetching ETH price: {e}")
+        return None
 
 def main():
     if len(sys.argv) != 4:

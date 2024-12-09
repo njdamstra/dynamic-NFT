@@ -155,4 +155,74 @@ describe("Sophisticated Oracle Pricing Mechanism", function () {
             // expect(price).to.equal(10);
         });
     });
+
+    describe("bNft should not be accepted", function () {
+        it("Should return 0 for bNft iteration 1 since it has no legitimate verifiable marketplace", async function () {
+            const price = getNftPrice("bNft", 0, 1);
+            console.log("price retrieved from python script: ", price);
+            expect(price).to.equal(0);
+        });
+        it("Should return 0 for bNft iteration 2 since it's marked as NSFW", async function () {
+            const price = getNftPrice("bNft", 0, 2);
+            console.log("price retrieved from python script: ", price);
+            expect(price).to.equal(0);
+        });
+        it("Should return 0 for bNft iteration 3 since has fewer then 10 distinct owners", async function () {
+            const price = getNftPrice("bNft", 0, 3);
+            console.log("price retrieved from python script: ", price);
+            expect(price).to.equal(0);
+        });
+        it("Should return 0 for bNft iteration 4 since its a ERC2030 contract", async function () {
+            const price = getNftPrice("bNft", 0, 4);
+            console.log("price retrieved from python script: ", price);
+            expect(price).to.equal(0);
+        });
+        it("Should return 0 for bNft iteration 5 since its on the Bitcoin Blockchain", async function () {
+            const price = getNftPrice("bNft", 0, 5);
+            console.log("price retrieved from python script: ", price);
+            expect(price).to.equal(0);
+        });
+    });
+    describe("fNft should only use the Floor Price", function () {
+        it("should return 5 ETH for fNft #0 iteration 1 because it has a low rarity score of 0.606", async function () {
+            const price = getNftPrice("fNft", 0, 1);
+            console.log("price retrieved from python script: ", price);
+            const five = BigInt(parseEther("5").toString());
+            expect(BigInt(price)).to.equal(five);
+        });
+        it("should return 5 ETH for fNft #0 iteration 2 because it has low ranking of 600 out of 1000 NFTs in the collection", async function () {
+            const price = getNftPrice("fNft", 0, 2);
+            console.log("price retrieved from python script: ", price);
+            const five = BigInt(parseEther("5").toString());
+            expect(BigInt(price)).to.equal(five);
+        });
+        it("should return 5 ETH for fNft #0 iteration 3 because it has less then 20% owners of the current volume", async function () {
+            const price = getNftPrice("fNft", 0, 3);
+            console.log("price retrieved from python script: ", price);
+            const five = BigInt(parseEther("5").toString());
+            expect(BigInt(price)).to.equal(five);
+        });
+        it("should return 5 ETH for fNft #1 iteration 4 because it has less then 3 sales", async function () {
+            const price = getNftPrice("fNft", 1, 4);
+            console.log("price retrieved from python script: ", price);
+            const five = BigInt(parseEther("5").toString());
+            expect(BigInt(price)).to.equal(five);
+        });
+    });
+    describe("nNft should use sales history", async function () {
+        it("should value nNft #0 higher than nNft #1 iteration 1 because #0 has higher recent sales (time weighted average)", async function () {
+            const price0 = getNftPrice("nNft", 0, 1);
+            console.log("price retrieved from python script for nNft #0: ", price0);
+            const price1 = getNftPrice("nNft", 1, 1);
+            console.log("price retrieved from python script for nNft #1: ", price1);
+            expect(price0).to.greaterThan(price1);
+        });
+        it("should value nNft #2 the same as nNft #3 iteration 1 despite #2 having an extremely high outlier (outlier exclusion)", async function () {
+            const price2 = getNftPrice("nNft", 2, 1);
+            console.log("price retrieved from python script for nNft #2: ", price2);
+            const price3 = getNftPrice("nNft", 3, 1);
+            console.log("price retrieved from python script for nNft #3: ", price3);
+            expect(price2).to.equal(price3);
+        });
+    })
 });

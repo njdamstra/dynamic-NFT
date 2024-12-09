@@ -1,0 +1,127 @@
+{
+    "_comment": "This represents a NFT with a ERC2030 contract",
+    "nft_id": "ethereum.0xed5af388653567af2f388e6224dc7c4b3241c544.4666",
+    "chain": "ethereum",
+    "contract_address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    "token_id": "0",
+    "name": "bNft #0",
+    "description": null,
+    "created_date": "2022-01-12T18:01:36",
+    "status": "minted",
+    "owners": [
+      {
+        "owner_address": "0x66666F58dE1bcD762A5E5c5aFf9cc3C906D66666",
+        "quantity": 1,
+        "quantity_string": "1",
+        "first_acquired_date": "2023-06-30T09:28:59",
+        "last_acquired_date": "2024-01-13T10:15:35"
+      }
+    ],
+    "contract": {
+      "type": "ERC2030",
+      "name": "bNft",
+      "symbol": "BAD",
+      "deployed_by": "0xd45058Bf25BBD8F586124C479D384c8C708CE23A",
+      "deployed_via_contract": null,
+      "owned_by": "0x2aE6B0630EBb4D155C6e04fCB16840FFA77760AA",
+      "has_multiple_collections": false
+    },
+    "collection": {
+      "collection_id": "2ccfd6cb165074e4881906dcc701f1d8",
+      "name": "Azuki",
+      "category": "pfps",
+      "is_nsfw": false,
+      "marketplace_pages": [
+        {
+          "marketplace_id": "Scam market",
+          "marketplace_name": "Magic Eden",
+          "marketplace_collection_id": "ethereum/0xed5af388653567af2f388e6224dc7c4b3241c544",
+          "nft_url": "https://magiceden.io/item-details/ethereum/0xed5af388653567af2f388e6224dc7c4b3241c544/4666",
+          "collection_url": "https://magiceden.io/collections/ethereum/0xed5af388653567af2f388e6224dc7c4b3241c544",
+          "verified": null
+        },
+        {
+          "marketplace_id": "opensea",
+          "marketplace_name": "OpenSea",
+          "marketplace_collection_id": "azuki",
+          "nft_url": "https://opensea.io/assets/ethereum/0xed5af388653567af2f388e6224dc7c4b3241c544/4666",
+          "collection_url": "https://opensea.io/collection/azuki",
+          "verified": true
+        }
+      ],
+      "floor_prices": [
+        {
+          "marketplace_id": "magiceden",
+          "marketplace_name": "Magic Eden",
+          "value": 5000000000000000000,
+          "payment_token": {
+            "payment_token_id": "ethereum.native",
+            "name": "Ether",
+            "symbol": "ETH",
+            "address": null,
+            "decimals": 18
+          },
+          "value_usd_cents": 2202539
+        },
+        {
+          "marketplace_id": "blur",
+          "marketplace_name": "Blur",
+          "value": 5000000000000000000,
+          "payment_token": {
+            "payment_token_id": "ethereum.native",
+            "name": "Ether",
+            "symbol": "ETH",
+            "address": null,
+            "decimals": 18
+          },
+          "value_usd_cents": 2215853
+        },
+        {
+          "marketplace_id": "opensea",
+          "marketplace_name": "OpenSea",
+          "value": 5000000000000000000,
+          "payment_token": {
+            "payment_token_id": "ethereum.native",
+            "name": "Ether",
+            "symbol": "ETH",
+            "address": null,
+            "decimals": 18
+          },
+          "value_usd_cents": 2225325
+        },
+        {
+          "marketplace_id": "looksrare",
+          "marketplace_name": "LooksRare",
+          "value": 5000000000000000000,
+          "payment_token": {
+            "payment_token_id": "ethereum.native",
+            "name": "Ether",
+            "symbol": "ETH",
+            "address": null,
+            "decimals": 18
+          },
+          "value_usd_cents": 3804040
+        }
+      ],
+      "distinct_owner_count": 3989,
+      "distinct_nft_count": 10000,
+      "total_quantity": 10000,
+      "chains": [
+        "ethereum"
+      ]
+    },
+    "first_created": {
+      "minted_to": "0x45a114939cD0aeA65c3aC5Ae46182E887c6EF4b4",
+      "quantity": 1,
+      "quantity_string": "1",
+      "timestamp": "2022-01-12T18:01:36",
+      "block_number": 13992210,
+      "transaction": "0x7079e502f950ad144f0261a3cfdeb6d3480e2dee391aa30eaa4af78bcd374de2",
+      "transaction_initiator": "0x45a114939cD0aeA65c3aC5Ae46182E887c6EF4b4"
+    },
+    "rarity": {
+      "rank": 44,
+      "score": 1.606,
+      "unique_attributes": 0
+    }
+  }

@@ -138,6 +138,27 @@ contract UserPortal is ReentrancyGuard, IERC721Receiver {
         // Transfer NFT back to the user
         // IERC721(collection).safeTransferFrom(address(this), msg.sender, tokenId);
     }
+    function simulateNftPrice(address collection, uint256 tokenId) public returns (uint256 price) {
+        iNftValues.addNft(collection, tokenId);
+        refresh();
+        price = iNftValues.getNftPrice(collection, tokenId);
+        return price;
+    }
+
+    function simulateLoan(uint256 borrowAmount, uint256 totalCollateral) public view returns (
+        uint256 totalDebt,
+        uint256 healthFactor,
+        bool canBorrow
+    ) {
+        totalDebt = borrowAmount + (borrowAmount*10) / 100;
+        healthFactor = iPool.calculateHealthFactor(totalDebt, totalCollateral);
+        if (healthFactor > 150) {
+            return (totalDebt, healthFactor, true);
+        } else {
+            return (totalDebt, healthFactor, false);
+        }
+    }
+
 
     function getBorrowerAccountData() public view returns (
         uint256 totalDebt,

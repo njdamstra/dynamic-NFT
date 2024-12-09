@@ -60,4 +60,5 @@ interface ILendingPool {
     function deleteLender(address lender) external;
     function getTotalBorrowedUsers(address borrower) external view returns (uint256);
     function updateBorrowersInterest() external;
+    function calculateHealthFactor(uint256 debtValue, uint256 collateralValue) external view returns (uint256);
 }

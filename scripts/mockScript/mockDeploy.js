@@ -31,20 +31,6 @@ async function main() {
     deployedAddresses["BadNft"] = bNftAddr;
     console.log("BadNft deployed to:", bNftAddr);
 
-    // Deploy MockOracle contract
-    const MockOracle = await ethers.getContractFactory("MockOracle");
-    const mockOracle = await MockOracle.connect(deployer).deploy();
-    const mockOracleAddr = await mockOracle.getAddress();
-    deployedAddresses["MockOracle"] = mockOracleAddr;
-    console.log("MockOracle deployed to:", mockOracleAddr);
-
-    // Deploy UserPortal
-    const UserPortal = await ethers.getContractFactory("UserPortal");
-    const portal = await UserPortal.deploy();
-    const portalAddr = await portal.getAddress();
-    deployedAddresses["UserPortal"] = portalAddr;
-    console.log("UserPortal deployed to:", portalAddr);
-
     // Deploy CAddresses
     const CAddresses = await ethers.getContractFactory("Addresses");
     const addresses = await CAddresses.deploy();
@@ -52,61 +38,47 @@ async function main() {
     deployedAddresses["CAddresses"] = addressesAddr;
     console.log("CAddresses deployed to:", addressesAddr);
 
+    // Deploy MockOracle contract
+    const MockOracle = await ethers.getContractFactory("MockOracle");
+    const mockOracle = await MockOracle.connect(deployer).deploy(addressesAddr);
+    const mockOracleAddr = await mockOracle.getAddress();
+    deployedAddresses["MockOracle"] = mockOracleAddr;
+    console.log("MockOracle deployed to:", mockOracleAddr);
+
+    // Deploy UserPortal
+    const UserPortal = await ethers.getContractFactory("UserPortal");
+    const portal = await UserPortal.deploy(addressesAddr);
+    const portalAddr = await portal.getAddress();
+    deployedAddresses["UserPortal"] = portalAddr;
+    console.log("UserPortal deployed to:", portalAddr);
+
     // Deploy CLendingPool
     const CLendingPool = await ethers.getContractFactory("LendingPool");
-    const pool = await CLendingPool.deploy();
+    const pool = await CLendingPool.deploy(addressesAddr);
     const poolAddr = await pool.getAddress();
     deployedAddresses["CLendingPool"] = poolAddr;
     console.log("CLendingPool deployed to:", poolAddr);
 
     // Deploy CCollateralManager
     const CCollateralManager = await ethers.getContractFactory("CollateralManager");
-    const collateralManager = await CCollateralManager.deploy();
+    const collateralManager = await CCollateralManager.deploy(addressesAddr);
     const CMAddr = await collateralManager.getAddress();
     deployedAddresses["CCollateralManager"] = CMAddr;
     console.log("CCollateralManager deployed to:", CMAddr);
 
     // Deploy NftTrader
     const NftTrader = await ethers.getContractFactory("NftTrader");
-    const nftTrader = await NftTrader.deploy();
+    const nftTrader = await NftTrader.deploy(addressesAddr);
     const traderAddr = await nftTrader.getAddress();
     deployedAddresses["NftTrader"] = traderAddr;
     console.log("NftTrader deployed to:", traderAddr);
 
     // Deploy NftValues
     const NftValues = await ethers.getContractFactory("NftValues");
-    const nftValues = await NftValues.deploy();
+    const nftValues = await NftValues.deploy(addressesAddr);
     const nftValuesAddr = await nftValues.getAddress();
     deployedAddresses["NftValues"] = nftValuesAddr;
     console.log("NftValues deployed to:", nftValuesAddr);
-
-    // Initialize contracts
-    console.log("Initializing contracts...");
-
-    // Initialize MockOracle:
-    await mockOracle.initialize(nftValuesAddr);
-    console.log("MockOracle initialized.");
-
-    // Initialize CCollateralManager
-    await collateralManager.initialize(
-        poolAddr,
-        traderAddr,
-        nftValuesAddr,
-        portalAddr
-    );
-    console.log("CCollateralManager initialized.");
-
-    // Initialize NftTrader
-    await nftTrader.initialize(CMAddr, poolAddr, portalAddr);
-    console.log("NftTrader initialized.");
-
-    // Initialize CLendingPool
-    await pool.initialize(CMAddr, portalAddr, traderAddr);
-    console.log("CLendingPool initialized.");
-
-    // Initialize UserPortal
-    await portal.initialize(CMAddr, poolAddr, traderAddr);
-    console.log("UserPortal initialized.");
 
     // Initialize CAddresses with contract addresses
     await addresses.setAddress("GoodNft", gNftAddr);
@@ -121,6 +93,26 @@ async function main() {
     await addresses.setAddress("deployer", deployer.address);
 
     console.log("Addresses contract initialized with contract addresses!");
+
+    // Initialize MockOracle
+    await mockOracle.connect(deployer).initialize();
+    
+    // Initialize NftValues
+    const useOnChainOracle = true;
+    await nftValues.connect(deployer).initialize(useOnChainOracle);
+
+    // Initialize CollateralManager
+    await collateralManager.connect(deployer).initialize();
+
+    // Initialize NftTrader
+    await nftTrader.connect(deployer).initialize();
+
+    // Initialize LendingPool
+    await lendingPool.connect(deployer).initialize();
+
+    // Initialize UserPortal
+    await portal.connect(deployer).initialize();
+    console.log("All contracts initialized!");
 
     // Log final contract addresses
     console.log({
