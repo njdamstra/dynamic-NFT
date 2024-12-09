@@ -1,24 +1,30 @@
 require("dotenv").config();
-const { ethers } = require("hardhat");
-const deployedAddresses = require("../mockScript/deployedAddresses.json");
-const { loadWallets } = require("../mockScript/loadWallets");
+const { ethers } = require("ethers");
 const { exec } = require("child_process");
+const deployedAddresses = require("../deployedAddresses.json");
 
-// Load wallets and provider
-const wallets = loadWallets();
-const deployer = wallets["deployer"]; // Use deployer wallet for updates
-// Load environment variables
-const CONTRACT_ADDRESS = deployedAddresses.NftValues;
+// Load Alchemy API key from environment variables
+const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
+if (!ALCHEMY_API_KEY) {
+    throw new Error("Alchemy API key is missing! Please set ALCHEMY_API_KEY in your .env file.");
+}
+
+// Sepolia network provider
+const provider = new ethers.providers.AlchemyProvider("sepolia", ALCHEMY_API_KEY);
+
+// Wallet setup
+const PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
+if (!PRIVATE_KEY) {
+    throw new Error("Deployer private key is missing! Please set DEPLOYER_PRIVATE_KEY in your .env file.");
+}
+const deployer = new ethers.Wallet(PRIVATE_KEY, provider);
+
+// Load contract ABI and address dynamically
 const nftValuesABI = require("../../artifacts/contracts/NftValues.sol/NftValues.json").abi;
+const nftValuesAddress = deployedAddresses.NftValues;
 
-// Setup provider and signer
-const provider = ethers.provider; // Use Hardhat's local provider
-
-// const deployerWallet = new ethers.Wallet(wallets.find(w => w.name === "deployer").privateKey, provider);
-
-// Load the contract ABI from Hardhat artifacts
-
-const contract = new ethers.Contract(CONTRACT_ADDRESS, nftValuesABI, deployer);
+// Create contract instance
+const contract = new ethers.Contract(nftValuesAddress, nftValuesABI, deployer);
 
 function callPythonScript(collectionAddr, tokenId) {
     return new Promise((resolve, reject) => {
@@ -47,33 +53,33 @@ function callPythonScript(collectionAddr, tokenId) {
     });
 }
 
-// Function to update floor prices for all collections
+// Function to update floor prices for all NFTs
 async function updateFloorPrices() {
-    console.log("Fetching collections from NftValues contract...");
+    console.log("Fetching NFT collections and token IDs from NftValues contract...");
 
-    // Fetch the list of collections from NftValues
     try {
         const collections = await contract.getNftAddrList();
         const tokenIds = await contract.getNftIdList();
         console.log(`Found ${collections.length} NFTs.`);
 
         for (let i = 0; i < collections.length; i++) {
-
             const collection = collections[i];
             const tokenId = tokenIds[i];
-            console.log(`Updating Collection: ${collection}, tokenId: ${tokenId}`);
+            console.log(`Updating price for Collection: ${collection}, Token ID: ${tokenId}`);
 
-            // Update the floor price in the contract
             try {
+                // Fetch the price using Python script
                 const priceWei = await callPythonScript(collection, tokenId);
                 console.log(`Price retrieved from Python script: ${priceWei}`);
+
+                // Update the price in the contract
                 const tx = await contract.updateNft(collection, tokenId, priceWei);
                 const receipt = await tx.wait();
 
                 console.log("Transaction Receipt logs:");
                 for (const log of receipt.logs) {
                     try {
-                        const parsedLog = nftValues.interface.parseLog(log);
+                        const parsedLog = contract.interface.parseLog(log);
                         console.log("Event:", parsedLog.name);
                         console.log("Args:", parsedLog.args);
                     } catch (err) {
@@ -82,15 +88,15 @@ async function updateFloorPrices() {
                 }
                 console.log(`NFT price updated successfully! Transaction Hash: ${tx.hash}`);
             } catch (error) {
-                console.error(`Error updating floor price for ${collection} ${tokenId}:`, error.message);
+                console.error(`Error updating price for Collection: ${collection}, Token ID: ${tokenId}`, error.message);
             }
         }
     } catch (error) {
-        console.error("Error fetching NFTs for updating prices:", error.message);
+        console.error("Error fetching NFTs or updating prices:", error.message);
     }
 }
 
 // Start the update process
 updateFloorPrices().catch((error) => {
-    console.error("Error in updateNft:", error.message);
+    console.error("Error in updateFloorPrices:", error.message);
 });

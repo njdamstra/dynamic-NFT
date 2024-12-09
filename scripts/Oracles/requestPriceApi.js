@@ -1,13 +1,23 @@
 require("dotenv").config();
-const { loadWallets } = require("../mockScript/loadWallets");
-const deployedAddresses = require("../mockScript/deployedAddresses.json");
-const { ethers } = require("hardhat");
+const { ethers } = require("ethers");
 const { exec } = require("child_process");
+const deployedAddresses = require("../deployedAddresses.json");
 
-// Load wallets and provider
-const wallets = loadWallets();
-const deployer = wallets["deployer"]; // Use deployer wallet for updates
-const provider = ethers.provider;
+// Load Alchemy API key from environment variables
+const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
+if (!ALCHEMY_API_KEY) {
+    throw new Error("Alchemy API key is missing! Please set ALCHEMY_API_KEY in your .env file.");
+}
+
+// Sepolia network provider
+const provider = new ethers.providers.AlchemyProvider("sepolia", ALCHEMY_API_KEY);
+
+// Wallet setup
+const PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
+if (!PRIVATE_KEY) {
+    throw new Error("Deployer private key is missing! Please set DEPLOYER_PRIVATE_KEY in your .env file.");
+}
+const deployer = new ethers.Wallet(PRIVATE_KEY, provider);
 
 // Load contract ABI and address dynamically
 const nftValuesABI = require("../../artifacts/contracts/NftValues.sol/NftValues.json").abi;
@@ -16,15 +26,21 @@ const nftValuesAddress = deployedAddresses.NftValues;
 // Create contract instance
 const nftValuesContract = new ethers.Contract(nftValuesAddress, nftValuesABI, deployer);
 
+// Fetch past events from the blockchain
 async function fetchPastEvents() {
-    const pastEvents = await nftValuesContract.queryFilter("RequestNftPrice");
-    console.log("Past RequestNftPrice events:", pastEvents);
-    for (const event of pastEvents) {
-        const { collectionAddr, tokenId } = event.args;
-        console.log(`Past Event - Collection: ${collectionAddr}, Token ID: ${tokenId}`);
+    try {
+        const pastEvents = await nftValuesContract.queryFilter("RequestNftPrice");
+        console.log("Past RequestNftPrice events:", pastEvents);
+        for (const event of pastEvents) {
+            const { collectionAddr, tokenId } = event.args;
+            console.log(`Past Event - Collection: ${collectionAddr}, Token ID: ${tokenId}`);
+        }
+    } catch (error) {
+        console.error("Error fetching past events:", error.message);
     }
 }
 
+// Execute Python script to fetch NFT price
 function callPythonScript(collectionAddr, tokenId) {
     return new Promise((resolve, reject) => {
         const pythonScriptPath = "scripts/Oracles/get_nft_price.py";
@@ -52,25 +68,26 @@ function callPythonScript(collectionAddr, tokenId) {
     });
 }
 
-
-// Listen for FloorPriceRequest events and handle them
+// Listen for RequestNftPrice events and handle them
 async function listenForRequests() {
     console.log("Provider network:", await provider.getNetwork());
     console.log("Listening for RequestNftPrice events...");
-    fetchPastEvents();
+    await fetchPastEvents();
 
     nftValuesContract.on("RequestNftPrice", async (collectionAddr, tokenId) => {
         console.log(`Received RequestNftPrice for Collection: ${collectionAddr}, TokenId: ${tokenId}`);
         try {
-            // Fetch the mock floor price
+            // Fetch the price using Python script
             const priceWei = await callPythonScript(collectionAddr, tokenId);
-            console.log(`NFT price retrieved from python script: ${priceWei}`);
+            console.log(`NFT price retrieved from Python script: ${priceWei}`);
+            
+            // Update the contract with the retrieved price
             const tx = await nftValuesContract.updateNft(collectionAddr, tokenId, priceWei);
             const receipt = await tx.wait();
             console.log("Transaction Receipt logs:");
             for (const log of receipt.logs) {
                 try {
-                    const parsedLog = nftValues.interface.parseLog(log);
+                    const parsedLog = nftValuesContract.interface.parseLog(log);
                     console.log("Event:", parsedLog.name);
                     console.log("Args:", parsedLog.args);
                 } catch (err) {

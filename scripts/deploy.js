@@ -15,7 +15,7 @@ async function main() {
     // Deploy GoodNft (Mock NFT contract)
     const GNft = await ethers.getContractFactory("GoodNFT", deployer);
     const gNft = await GNft.deploy();
-    await gNft.deployed();
+    // await gNft.deployed();
     const gNftAddr = gNft.address;
     deployedAddresses["GoodNft"] = gNftAddr;
     console.log("GoodNft deployed to:", gNftAddr);
@@ -23,7 +23,7 @@ async function main() {
     // Deploy BadNft (Mock NFT contract)
     const BNft = await ethers.getContractFactory("BadNFT", deployer);
     const bNft = await BNft.deploy();
-    await bNft.deployed();
+    // await bNft.deployed();
     const bNftAddr = bNft.address;
     deployedAddresses["BadNft"] = bNftAddr;
     console.log("BadNft deployed to:", bNftAddr);
@@ -31,7 +31,7 @@ async function main() {
     // Deploy CAddresses
     const CAddresses = await ethers.getContractFactory("Addresses", deployer);
     const addresses = await CAddresses.deploy();
-    await addresses.deployed();
+    // await addresses.deployed();
     const addressesAddr = addresses.address;
     deployedAddresses["CAddresses"] = addressesAddr;
     console.log("CAddresses deployed to:", addressesAddr);
@@ -39,7 +39,7 @@ async function main() {
     // Deploy MockOracle contract
     const MockOracle = await ethers.getContractFactory("MockOracle", deployer);
     const mockOracle = await MockOracle.deploy(addressesAddr);
-    await mockOracle.deployed();
+    // await mockOracle.deployed();
     const mockOracleAddr = mockOracle.address;
     deployedAddresses["MockOracle"] = mockOracleAddr;
     console.log("MockOracle deployed to:", mockOracleAddr);
@@ -47,7 +47,7 @@ async function main() {
     // Deploy UserPortal
     const UserPortal = await ethers.getContractFactory("UserPortal", deployer);
     const portal = await UserPortal.deploy(addressesAddr);
-    await portal.deployed();
+    // await portal.deployed();
     const portalAddr = portal.address;
     deployedAddresses["UserPortal"] = portalAddr;
     console.log("UserPortal deployed to:", portalAddr);
@@ -55,7 +55,7 @@ async function main() {
     // Deploy CLendingPool
     const CLendingPool = await ethers.getContractFactory("LendingPool", deployer);
     const pool = await CLendingPool.deploy(addressesAddr);
-    await pool.deployed();
+    // await pool.deployed();
     const poolAddr = pool.address;
     deployedAddresses["CLendingPool"] = poolAddr;
     console.log("CLendingPool deployed to:", poolAddr);
@@ -63,7 +63,7 @@ async function main() {
     // Deploy CCollateralManager
     const CCollateralManager = await ethers.getContractFactory("CollateralManager", deployer);
     const collateralManager = await CCollateralManager.deploy(addressesAddr);
-    await collateralManager.deployed();
+    // await collateralManager.deployed();
     const CMAddr = collateralManager.address;
     deployedAddresses["CCollateralManager"] = CMAddr;
     console.log("CCollateralManager deployed to:", CMAddr);
@@ -71,7 +71,7 @@ async function main() {
     // Deploy NftTrader
     const NftTrader = await ethers.getContractFactory("NftTrader", deployer);
     const nftTrader = await NftTrader.deploy(addressesAddr);
-    await nftTrader.deployed();
+    // await nftTrader.deployed();
     const traderAddr = nftTrader.address;
     deployedAddresses["NftTrader"] = traderAddr;
     console.log("NftTrader deployed to:", traderAddr);
@@ -79,7 +79,7 @@ async function main() {
     // Deploy NftValues
     const NftValues = await ethers.getContractFactory("NftValues", deployer);
     const nftValues = await NftValues.deploy(addressesAddr);
-    await nftValues.deployed();
+    // await nftValues.deployed();
     const nftValuesAddr = nftValues.address;
     deployedAddresses["NftValues"] = nftValuesAddr;
     console.log("NftValues deployed to:", nftValuesAddr);
@@ -102,7 +102,7 @@ async function main() {
     await mockOracle.initialize();
     
     // Initialize NftValues
-    const useOnChainOracle = true;
+    const useOnChainOracle = false;
     await nftValues.initialize(useOnChainOracle);
 
     // Initialize CollateralManager
