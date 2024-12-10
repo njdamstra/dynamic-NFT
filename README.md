@@ -481,13 +481,13 @@ npx hardhat test test/oraclePricing.test.js
 
 **Nathan Damstra:** Implementation leader
 
-**Felix:** Bridge between researcher and implementation
+**Felix Krumme:** Liquidity Pool
 
-**Sriman:** Final Report and Reacher
+**Sriman Kundavaram:** Smart Contract Development
 
-**Varun:** Final Report and Reacher
+**Varun Gudla:** Dynamic Collateral Management
 
-**Jonathan:** Final Report and Reacher
+**Jonathan Constantinos:** NFT Valuation Expert
 
 
 
