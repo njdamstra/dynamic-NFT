@@ -276,18 +276,94 @@ Determines if the floor price should be the sole basis for valuation based on ra
 ## Conclusion
 By leveraging verified data from the **Simplehash API**, this system combines robust validation with reliable pricing methods to produce accurate and safe valuations for NFTs.
 
+---
 
+# **Improvements:**
 
 # **Dynamic Liquidation Protocol**
-TODO
+
+**Purpose:** Due to volatile nature of NFTs, Borrowers already face high risk of liquidation, we aim to reduce borrowers risk of complete liquidation
+
+**Challenges with liquidating NFTs:**
+1. Due to the inseperable nature of NFTs, its hard to define a close factor to protect the borrower from complete liquidation.
+2. It's hard to price the collateral during liquidation due to NFTs violatile nature, we can't have one consistent liquidation spread
+
+**Solution:** 
+1. Liquidate until health factor restores to avoid excessive liquidation
+2. Allow for a 24 hour grace period for values to restore, the borrower repays enought debt, or the borrower recollateralizes
+
+
+**Our protocol:**
+1. Health Factor: 
+    - Health Factor = (total collateral value x 75) / total debt
+    - Liquidation Threshold = 100; (LT defines the health factor at which liquidation is triggered)
+    - Loan-to-Value Ratio = 75; (LTV defines maximum borrowing capacity relative to the collateral value)
+    - total collateral value = sum(borrowers NFTs value)
+    - total debt = (loan + (loan x 10%)) 
+    - Liquidation is triggered if health factor drops below 100 with the goal of restoring the borrower's financial stability.
+2. Triggering liquidation:
+    - once health factor drops below 100, liquidation is triggered.
+    - getNFTsToLiquidate identifies the minimal set of NFTs required to bring the Health Factor back to or above 100.
+      - NFTs are sorted in descending order of value, ensuring higher-value NFTs are prioritized for liquidation, minimizing the number of assets liquidated.
+    
+3. Simulate liquidation: for each NFT in a borrowers liquidatable collateral profile sorted in descending order;
+    - subtract its value from the simulated total collateral
+    - subtract the debt reduction from the simulated total debt.
+    - mark liquidatable
+    - recalculate heath factor with new simulated values.
+    - if health factor > 100; stop marking NFTs as liquidatable.
+    - else repeat for the next NFT in borrowers collateral profile without restoring simulated total collateral and total debt value
+
+4. Liquidating: list all the NFTs marked as liquidatable by adding it to a 24 hour auction in NftTrader. set the base price with a 5% discount of the oracle valuated price
+
+5. Unliquidation: if in the 24 hour period: the nft values increases and restores the health factor above 100, the borrower repays enough or all of there debts, or provides additional collateral, the NFT will be delisted from NftTrader and be safe in the borrowers collateral profile. If there was no liquidators that placed a bid on it within the 24 hour period, the listing changes to a 'buyNow' state where any liquidator can purchase it immediately for it's base price, or it can be delisted for the same reasons mentioned earlier, which ever one comes first.
+
 
 ## **Example of Borrower Friendly Liquidation**
+
+**Borrowers position:**
+* Total Debt: 50 eth
+* Total Collateral Value: 60 eth
+  * NFT 1: 20 eth
+  * NFT 2: 20 eth
+  * NFT 3: 15 eth
+  * NFT 4: 5 eth
+* Health Factor: 60 x 75 / 50 = 90 
+  * Liquidation is triggered (90 < 100)
+
+**Liquidation Process:**
+* NFTs sorted in descending order: [20, 20, 15, 5]
+* simulate liquidating NFT 1: (20 eth)
+  * Discounted Price = 20 x 0.95 = 19 eth
+  * simulated CV = 60 - 19 = 41 eth
+  * simulated TD = 50 - 19 = 31 eth
+  * mark NFT 1 as liquidatable
+  * simulated HF = 41 x 75 / 31 = 99  """so close"""
+* Simulate liquidating NFT 2: (20 eth)
+  * Discounted Price = 20 x 0.95 = 19 eth
+  * Simulated CV = 41 - 19 = 22 eth
+  * Simulated TD = 31 - 19 = 12 eth
+  * Mark NFT 2 as liquidatable
+  * Simulated HF = 22 x 75 / 12 = 137
+   - Stop liquidating additional NFTs
+* NFTs to Liquidate = [NFT1, NFT2]
+* NFTs Not to Liquidate = [NFT3, NFT4]
+* Iterate through NFTs to Liquidate and list them in NftTrader
+* Iterate through NFTs Not to Liquidate and delist them from NftTrader if they were previously placed there. 
 
 
 
 
 # **Dynamic Recollateralization**
-TODO
+
+**Purpose:** Allow for borrowers to have full custody over the state of the loan 
+**Problem Addressing:**
+**Solution:** Recollateralization or Decollateralization at any point during the loan given the health factor allows for it
+
+**Our Protocol:**
+1. addCollateral function allows the borrower to recollateralize at any point
+    * If 
+
 ## **Example of recollateralizing**
 
 
