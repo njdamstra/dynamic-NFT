@@ -178,7 +178,7 @@ contract CollateralManager is IERC721Receiver {
     function redeemCollateral(address borrower, address collectionAddress, uint256 tokenId) public onlyPortal {
         uint256 healthFactor = getHealthFactor(borrower);
         // require(isNftValid(borrower, collectionAddress,tokenId), "[*ERROR* Nft not valid]");
-        require(healthFactor > 100,"[*ERROR*] Health Factor has to be above 1.5 to redeem collateral!");
+        require(healthFactor > 110,"[*ERROR*] Health Factor has to be above 1.5 to redeem collateral!");
 
         // get a new List without the redeemed Nft
         // Nft[] memory nftListCopy = getNftList(borrower);
@@ -203,7 +203,7 @@ contract CollateralManager is IERC721Receiver {
         // Recalculate health factor after removing the NFT
         uint256 newCollateralValue = getCollateralValue(borrower);
         uint256 newHealthFactor = calculateBorrowersHealthFactor(borrower, newCollateralValue);
-        require(newHealthFactor > 100, "[*ERROR*] Health Factor would fall below 1.2 after redemption!");
+        require(newHealthFactor > 110, "[*ERROR*] Health Factor would fall below 1.1 after redemption!");
 
         // Proceed to redeem the NFT
         IERC721 nftContract = IERC721(collectionAddress);
@@ -394,7 +394,7 @@ contract CollateralManager is IERC721Receiver {
             uint256 currentHealthFactor = calculateHealthFactor(updatedTotalDebt, updatedCollateralValue);
 
             // Liquidate this NFT if the current health factor is still below 100
-            if (currentHealthFactor < 100) {
+            if (currentHealthFactor < 110) {
                 nftsToLiquidate[nftsToLiquidateCount] = nft;
                 nftsToLiquidateCount++;
 
